@@ -1,5 +1,8 @@
 import json
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 from django.http import JsonResponse
 from django.templatetags.static import static
 from .models import Order, OrderItem
@@ -60,38 +63,35 @@ def product_list_api(request):
     })
 
 
+@api_view(['POST'])
 def register_order(request):
-    if request.method == 'POST':
-        try:
-            payload = json.loads(request.body)
+    recieved_submission = request.data
 
-            order = Order.objects.create(
-                client_name = payload.get('firstname'),
-                surname = payload.get('lastname'),
-                phone = payload.get('phonenumber'),
-                delivery_address = payload.get('address')
-            )
+    print("Получено для заказа (DRF):")
+    print(recieved_submission)
 
-            product_in_payload = payload.get('products')
+    new_order_record = Order.objects.create(
+        client_name = recieved_submission.get('firstname'),
+        surname = recieved_submission.get('lastname'),
+        phone = recieved_submission.get('phonenumber'),
+        delivery_address = recieved_submission.get('address')
+    )
 
-            for product in product_in_payload:
-                product_id = product.get('product')
-                quantity = product.get('quantity')
+    product_details = recieved_submission.get('products', [])
 
-                product_object = Product.objects.get(id=product_id)
+    for product in product_details:
+        product_id = product.get('product')
+        quantity = product.get('quantity')
 
-                OrderItem.objects.create(
-                    order=order,
-                    product=product_object,
-                    quantity=quantity
-                )
+        product_object = Product.objects.get(id=product_id)
 
-            return JsonResponse({'order_id': order.id})
-        except json.JSONDecodeError:
-            print("Ошибка декодирования JSON из тела запроса")
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        except Exception as e:
-            print(f"Неожиданная ошибка: {e}")
-            return JsonResponse({'error': 'Server error'}, status=500)
+        OrderItem.objects.create(
+            order=new_order_record,
+            product=product_object,
+            quantity=quantity
+        )
 
-    return JsonResponse({'error': 'Допустим только POST-запрос'}, status=405)
+    return Response({'order_id': new_order_record.id})
+
+
+
