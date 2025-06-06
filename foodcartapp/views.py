@@ -1,5 +1,8 @@
+import json
+
 from django.http import JsonResponse
 from django.templatetags.static import static
+from .models import Order, OrderItem
 
 
 from .models import Product
@@ -58,5 +61,37 @@ def product_list_api(request):
 
 
 def register_order(request):
-    # TODO это лишь заглушка
-    return JsonResponse({})
+    if request.method == 'POST':
+        try:
+            payload = json.loads(request.body)
+
+            order = Order.objects.create(
+                client_name = payload.get('firstname'),
+                surname = payload.get('lastname'),
+                phone = payload.get('phonenumber'),
+                delivery_address = payload.get('address')
+            )
+
+            product_in_payload = payload.get('products')
+
+            for product in product_in_payload:
+                product_id = product.get('product')
+                quantity = product.get('quantity')
+
+                product_object = Product.objects.get(id=product_id)
+
+                OrderItem.objects.create(
+                    order=order,
+                    product=product_object,
+                    quantity=quantity
+                )
+
+            return JsonResponse({'order_id': order.id})
+        except json.JSONDecodeError:
+            print("Ошибка декодирования JSON из тела запроса")
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            print(f"Неожиданная ошибка: {e}")
+            return JsonResponse({'error': 'Server error'}, status=500)
+
+    return JsonResponse({'error': 'Допустим только POST-запрос'}, status=405)
