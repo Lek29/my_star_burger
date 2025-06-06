@@ -1,5 +1,6 @@
 import json
 
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -64,11 +65,39 @@ def product_list_api(request):
 
 
 @api_view(['POST'])
+@csrf_exempt
 def register_order(request):
     recieved_submission = request.data
 
     print("Получено для заказа (DRF):")
     print(recieved_submission)
+
+    try:
+        products_details_list = recieved_submission['products']
+
+        if products_details_list is None:
+            return Response(
+                {'products': ['Это поле не может быть пустым (null).']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not isinstance(products_details_list, list):
+            error_message = f"Ожидался list со значениями, но был получен '{type(products_details_list).__name__}'."
+            return Response(
+                {'products': [error_message]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not products_details_list:
+            return Response(
+                {'products': ['Этот список не может быть пустым.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    except KeyError:
+        return Response(
+            {'products': ['Обязательное поле.']},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
 
     new_order_record = Order.objects.create(
         client_name = recieved_submission.get('firstname'),
@@ -91,7 +120,7 @@ def register_order(request):
             quantity=quantity
         )
 
-    return Response({'order_id': new_order_record.id})
+    return Response({'order_id': new_order_record.id}, status=status.HTTP_201_CREATED)
 
 
 
