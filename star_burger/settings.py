@@ -124,3 +124,7 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "assets"),
     os.path.join(BASE_DIR, "bundles"),
 ]
+
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'drf_standardized_errors.handler.exception_handler'
+}

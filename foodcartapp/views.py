@@ -1,5 +1,6 @@
 import json
 
+from django.template.defaultfilters import first
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -7,7 +8,7 @@ from rest_framework import status
 from django.http import JsonResponse
 from django.templatetags.static import static
 from .models import Order, OrderItem
-
+from .serializers import OrderSerializer
 
 from .models import Product
 
@@ -67,60 +68,14 @@ def product_list_api(request):
 @api_view(['POST'])
 @csrf_exempt
 def register_order(request):
-    recieved_submission = request.data
+    serializer = OrderSerializer(data=request.data)
 
-    print("Получено для заказа (DRF):")
-    print(recieved_submission)
+    if serializer.is_valid(raise_exception=True):
+        saved_order_instance = serializer.save()
 
-    try:
-        products_details_list = recieved_submission['products']
+        print(f"Заказ №{saved_order_instance.id} создан через сериализатор.")
+        return Response({'order_id': saved_order_instance.id}, status=status.HTTP_201_CREATED)
 
-        if products_details_list is None:
-            return Response(
-                {'products': ['Это поле не может быть пустым (null).']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if not isinstance(products_details_list, list):
-            error_message = f"Ожидался list со значениями, но был получен '{type(products_details_list).__name__}'."
-            return Response(
-                {'products': [error_message]},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        if not products_details_list:
-            return Response(
-                {'products': ['Этот список не может быть пустым.']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-    except KeyError:
-        return Response(
-            {'products': ['Обязательное поле.']},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-
-    new_order_record = Order.objects.create(
-        client_name = recieved_submission.get('firstname'),
-        surname = recieved_submission.get('lastname'),
-        phone = recieved_submission.get('phonenumber'),
-        delivery_address = recieved_submission.get('address')
-    )
-
-    product_details = recieved_submission.get('products', [])
-
-    for product in product_details:
-        product_id = product.get('product')
-        quantity = product.get('quantity')
-
-        product_object = Product.objects.get(id=product_id)
-
-        OrderItem.objects.create(
-            order=new_order_record,
-            product=product_object,
-            quantity=quantity
-        )
-
-    return Response({'order_id': new_order_record.id}, status=status.HTTP_201_CREATED)
 
 
 
