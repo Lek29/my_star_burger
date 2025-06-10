@@ -8,21 +8,23 @@ class OrderItemSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=1)
 
 
-class OrderSerializer(serializers.Serializer):
-    firstname = serializers.CharField(max_length=100)
-    lastname = serializers.CharField(max_length=100)
-    phonenumber = PhoneNumberField(region='RU')
-    address = serializers.CharField(max_length=255)
 
-    products = OrderItemSerializer(many=True, allow_empty=False)
+class OrderSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    firstname = serializers.CharField(max_length=100, source='client_name')
+    lastname = serializers.CharField(max_length=100, source='surname')
+    phonenumber = PhoneNumberField(region='RU', source='phone')
+    address = serializers.CharField(max_length=255, source='delivery_address')
+
+    products = OrderItemSerializer(many=True, allow_empty=False, write_only=True)
 
     def create(self, validated_data):
         order_items_payload = validated_data.pop('products')
         order_instance = Order.objects.create(
-            client_name=validated_data['firstname'],
-            surname=validated_data['lastname'],
-            phone=validated_data['phonenumber'],
-            delivery_address=validated_data['address']
+            client_name=validated_data['client_name'],
+            surname=validated_data['surname'],
+            phone=validated_data['phone'],
+            delivery_address=validated_data['delivery_address']
         )
 
         for item_payload in order_items_payload:
