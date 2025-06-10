@@ -17,6 +17,7 @@
         <th>Клиент</th>
         <th>Телефон</th>
         <th>Адрес доставки</th>
+        <th>Стоимость Заказа</th>
       </tr>
     {% for current_order_record in order_records %}
       <tr>
@@ -24,6 +25,7 @@
         <td>{{ current_order_record.client_name }} {{ current_order_record.surname }}</td>
         <td>{{ current_order_record.phone }}</td>
         <td>{{ current_order_record.delivery_address }}</td>
+        <td>{{ current_order_record.total_order_cost}} руб.</td>
       </tr>
     {% empty %}
     {% endfor %}

@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models import Sum, F, DecimalField
+from django.db.models.functions import Coalesce
 from django.core.validators import MinValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
 
@@ -123,6 +125,25 @@ class RestaurantMenuItem(models.Model):
         return f"{self.restaurant.name} - {self.product.name}"
 
 
+
+class OrderQuerySet(models.QuerySet):
+    ' Кастомный QuerySet для модели Order, добавляющий полезные методы.'
+    def annotate_with_total_cost(self):
+        cost_per_items = F('items__quantity') * F('items__product__price')
+        sum_of_items_coast = Sum(
+            cost_per_items,
+            output_field=DecimalField(max_digits=10, decimal_places=2)
+        )
+        annotated_queryset = self.annotate(
+            total_order_cost=Coalesce(
+                sum_of_items_coast,
+                0,
+                output_field=DecimalField(max_digits=10, decimal_places=2)
+            )
+        )
+        return annotated_queryset
+
+
 class Order(models.Model):
     client_name = models.CharField(
         'Имя',
@@ -143,6 +164,7 @@ class Order(models.Model):
         max_length=200,
     )
 
+    objects = OrderQuerySet.as_manager()
     class Meta:
         ordering = ['id']
         verbose_name = 'заказ'
@@ -177,3 +199,6 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name} для заказа №{self.order.id}"
+
+
+
