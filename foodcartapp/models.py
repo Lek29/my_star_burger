@@ -127,9 +127,9 @@ class RestaurantMenuItem(models.Model):
 
 
 class OrderQuerySet(models.QuerySet):
-    ' Кастомный QuerySet для модели Order, добавляющий полезные методы.'
+    ' Кастомный QuerySet для модели Order'
     def annotate_with_total_cost(self):
-        cost_per_items = F('items__quantity') * F('items__product__price')
+        cost_per_items = F('items__quantity') * F('items__price_at_purchase')
         sum_of_items_coast = Sum(
             cost_per_items,
             output_field=DecimalField(max_digits=10, decimal_places=2)
@@ -191,11 +191,17 @@ class OrderItem(models.Model):
         'Количество',
         validators=[MinValueValidator(1)]
     )
+    price_at_purchase = models.DecimalField(
+        'Цена товара в заказе',
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
 
     class Meta:
         verbose_name = 'позиция заказа'
         verbose_name_plural = 'позиции заказа'
-
+        unique_together = [['order', 'product']]
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name} для заказа №{self.order.id}"

@@ -18,6 +18,7 @@
         <th>Телефон</th>
         <th>Адрес доставки</th>
         <th>Стоимость Заказа</th>
+        <th>Действия</th>
       </tr>
     {% for current_order_record in order_records %}
       <tr>
@@ -26,6 +27,11 @@
         <td>{{ current_order_record.phone }}</td>
         <td>{{ current_order_record.delivery_address }}</td>
         <td>{{ current_order_record.total_order_cost}} руб.</td>
+        <td>
+          <a href="{% url 'admin:foodcartapp_order_change' current_order_record.id %}?next={{ request.path|urlencode }}" target="_blank">
+          Редактировать
+          </a>
+        </td>
       </tr>
     {% empty %}
     {% endfor %}

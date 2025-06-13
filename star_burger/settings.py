@@ -22,6 +22,8 @@ INSTALLED_APPS = [
     'restaurateur.apps.RestaurateurConfig',
     'phonenumber_field',
     'rest_framework',
+
+    'django_extensions',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
