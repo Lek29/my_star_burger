@@ -145,6 +145,19 @@ class OrderQuerySet(models.QuerySet):
 
 
 class Order(models.Model):
+    STATUS_NEW = 'NEW'
+    STATUS_PREPARING = 'PREPARING'
+    STATUS_DELIVERING = 'DELIVERING'
+    STATUS_COMPLETED = 'COMPLETED'
+    STATUS_CANCELED = 'CANCELED'
+
+    ORDER_STATUSES = [
+        (STATUS_NEW, 'Необработан'),
+        (STATUS_PREPARING, 'Готовится'),
+        (STATUS_DELIVERING, 'В доставке'),
+        (STATUS_COMPLETED, 'Выполнен'),
+        (STATUS_CANCELED, 'Отменён'),
+    ]
     client_name = models.CharField(
         'Имя',
         max_length=50,
@@ -162,6 +175,13 @@ class Order(models.Model):
     delivery_address=models.CharField(
         'Адрес доставки',
         max_length=200,
+    )
+    status=models.CharField(
+        'Статус заказов',
+        max_length=50,
+        choices=ORDER_STATUSES,
+        default=STATUS_NEW,
+        db_index=True,
     )
 
     objects = OrderQuerySet.as_manager()

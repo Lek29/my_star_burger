@@ -94,7 +94,12 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders_query = Order.objects.annotate_with_total_cost().order_by('-id')
+    orders_query = Order.objects.annotate_with_total_cost().exclude(
+        status = Order.STATUS_COMPLETED
+    ).prefetch_related(
+        'items__product'
+    ).order_by('-id')
+
     context = {
         'order_records': orders_query
     }
