@@ -124,6 +124,7 @@ class OrderAdmin(admin.ModelAdmin):
         'surname',
         'phone',
         'delivery_address',
+        'created_at',
     )
 
     search_fields = (
@@ -149,9 +150,7 @@ class OrderAdmin(admin.ModelAdmin):
 
 
     def response_change(self, request, obj):
-        next_url = request.GET.get('next')
-
-        if next_url and url_has_allowed_host_and_scheme(next_url, request.get_host()):
-            return redirect(next_url)
-
+        if '_save' in request.POST:
+            return redirect('/manager/orders/')
         return super().response_change(request, obj)
+

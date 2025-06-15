@@ -158,6 +158,23 @@ class Order(models.Model):
         (STATUS_COMPLETED, 'Выполнен'),
         (STATUS_CANCELED, 'Отменён'),
     ]
+    created_at = models.DateTimeField(
+        'Дата создания',
+        auto_now_add=True,
+        db_index=True,
+    )
+    called_at = models.DateTimeField(
+        'Дата звонка',
+        blank=True,
+        null=True,
+        db_index=True,
+    )
+    delivered_at = models.DateTimeField(
+        'Дата доставки',
+        blank=True,
+        null=True,
+        db_index=True,
+    )
     client_name = models.CharField(
         'Имя',
         max_length=50,
@@ -182,6 +199,12 @@ class Order(models.Model):
         choices=ORDER_STATUSES,
         default=STATUS_NEW,
         db_index=True,
+    )
+    customer_comment =models.TextField(
+        'Комментарий',
+        blank=True,
+        null=True,
+        help_text='Примечания к заказу'
     )
 
     objects = OrderQuerySet.as_manager()

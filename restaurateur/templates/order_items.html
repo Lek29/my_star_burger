@@ -18,6 +18,8 @@
         <th>Телефон</th>
         <th>Адрес доставки</th>
         <th>Стоимость Заказа</th>
+        <th>Статус заказа</th>
+        <th>Комментарий</th>
         <th>Действия</th>
       </tr>
     {% for current_order_record in order_records %}
@@ -27,6 +29,8 @@
         <td>{{ current_order_record.phone }}</td>
         <td>{{ current_order_record.delivery_address }}</td>
         <td>{{ current_order_record.total_order_cost}} руб.</td>
+        <td>{{ current_order_record.get_status_display}}</td>
+        <td>{{ current_order_record.customer_comment|default_if_none:'' }}</td>
         <td>
           <a href="{% url 'admin:foodcartapp_order_change' current_order_record.id %}?next={{ request.path|urlencode }}" target="_blank">
           Редактировать
