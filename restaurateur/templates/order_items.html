@@ -21,6 +21,7 @@
         <th>Статус заказа</th>
         <th>Комментарий</th>
         <th>Действия</th>
+        <th>Способ оплаты</th>
       </tr>
     {% for current_order_record in order_records %}
       <tr>
@@ -36,6 +37,7 @@
           Редактировать
           </a>
         </td>
+        <td>{{ current_order_record.get_payment_method_display }}</td>
       </tr>
     {% empty %}
     {% endfor %}

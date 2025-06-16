@@ -144,6 +144,11 @@ class OrderQuerySet(models.QuerySet):
         return annotated_queryset
 
 
+class PaymentMethod(models.TextChoices):
+    CASH = 'cash', 'Наличными при получении'
+    CARD = 'card', 'Электронно'
+
+
 class Order(models.Model):
     STATUS_NEW = 'NEW'
     STATUS_PREPARING = 'PREPARING'
@@ -200,7 +205,13 @@ class Order(models.Model):
         default=STATUS_NEW,
         db_index=True,
     )
-    customer_comment =models.TextField(
+    payment_method = models.CharField(
+        'Способ оплаты',
+        max_length=50,
+        choices=PaymentMethod.choices,
+        db_index=True,
+    )
+    customer_comment = models.TextField(
         'Комментарий',
         blank=True,
         null=True,
@@ -248,6 +259,5 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.quantity} x {self.product.name} для заказа №{self.order.id}"
-
 
 
