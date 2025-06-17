@@ -5,6 +5,8 @@ from django.views import View
 from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import F, Sum, DecimalField
+from django.utils import timezone
+
 
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
@@ -94,13 +96,27 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    orders_query = Order.objects.annotate_with_total_cost().exclude(
-        status = Order.STATUS_COMPLETED
-    ).prefetch_related(
-        'items__product'
-    ).order_by('-id')
+    # orders_query = Order.objects.annotate_with_total_cost().exclude(
+    #     status = Order.STATUS_COMPLETED
+    # ).prefetch_related(
+    #     'items__product'
+    # ).order_by('-id')
+    #
+    # context = {
+    #     'order_records': orders_query
+    # }
+    # return render(request, template_name='order_items.html', context=context)
+    orders = Order.objects.annotate_with_total_cost().prefetch_available_restaurants().filter(
+        status__in=[Order.STATUS_NEW, Order.STATUS_PREPARING]
+    ).order_by('created_at')
+
+    for order in orders:
+        order.suitable_restaurants = []
+        if order.status == Order.STATUS_NEW and not order.restaurant:
+            order.suitable_restaurants = Order.objects.get_matching_restaurants_for_order(order)
+
 
     context = {
-        'order_records': orders_query
+        'order_records': orders,
     }
     return render(request, template_name='order_items.html', context=context)

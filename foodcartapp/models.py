@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Sum, F, DecimalField
+from django.db.models import Sum, F, DecimalField, Prefetch
 from django.db.models.functions import Coalesce
 from django.core.validators import MinValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
@@ -128,6 +128,7 @@ class RestaurantMenuItem(models.Model):
 
 class OrderQuerySet(models.QuerySet):
     ' Кастомный QuerySet для модели Order'
+
     def annotate_with_total_cost(self):
         cost_per_items = F('items__quantity') * F('items__price_at_purchase')
         sum_of_items_coast = Sum(
@@ -142,6 +143,39 @@ class OrderQuerySet(models.QuerySet):
             )
         )
         return annotated_queryset
+
+
+    def prefetch_available_restaurants(self):
+        return self.prefetch_related(
+            Prefetch(
+                'items__product__menu_items',
+                queryset=RestaurantMenuItem.objects.filter(availability=True),
+                to_attr='available_product_menu_items'
+            )
+        )
+
+    def get_matching_restaurants_for_order(self, order):
+        restaurants_for_each_product = []
+
+        if not order.items.exists():
+            return []
+
+        for order_item in order.items.all():
+
+            available_menu_items = getattr(order_item.product, 'available_product_menu_items', [])
+
+            product_restaurants_ids = {item.restaurant_id for item in available_menu_items}
+
+            if not product_restaurants_ids:
+                return []
+            restaurants_for_each_product.append(product_restaurants_ids)
+
+        if not restaurants_for_each_product:
+            return []
+
+        suitable_restaurant_ids = set.intersection(*restaurants_for_each_product)
+        suitable_restaurants = Restaurant.objects.filter(id__in=suitable_restaurant_ids).order_by('name')
+        return list(suitable_restaurants)
 
 
 class PaymentMethod(models.TextChoices):
@@ -216,6 +250,15 @@ class Order(models.Model):
         blank=True,
         null=True,
         help_text='Примечания к заказу'
+    )
+    restaurant = models.ForeignKey(
+        Restaurant,
+        verbose_name='Готовит ресторан',
+        related_name='orders',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_index=True,
     )
 
     objects = OrderQuerySet.as_manager()

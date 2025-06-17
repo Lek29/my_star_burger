@@ -20,8 +20,9 @@
         <th>Стоимость Заказа</th>
         <th>Статус заказа</th>
         <th>Комментарий</th>
-        <th>Действия</th>
         <th>Способ оплаты</th>
+        <th>Действия</th>
+        <th>Способные рестораны</th>
       </tr>
     {% for current_order_record in order_records %}
       <tr>
@@ -32,12 +33,28 @@
         <td>{{ current_order_record.total_order_cost}} руб.</td>
         <td>{{ current_order_record.get_status_display}}</td>
         <td>{{ current_order_record.customer_comment|default_if_none:'' }}</td>
+        <td>{{ current_order_record.get_payment_method_display }}</td>
         <td>
           <a href="{% url 'admin:foodcartapp_order_change' current_order_record.id %}?next={{ request.path|urlencode }}" target="_blank">
           Редактировать
           </a>
+        <td>
+          {# Отображаем назначенный ресторан, если он есть #}
+          {% if current_order_record.restaurant %}
+              <strong>{{ current_order_record.restaurant.name }}</strong>
+          {% elif current_order_record.suitable_restaurants %}
+              <details>
+                  <summary>Список ресторанов ({{ current_order_record.suitable_restaurants|length }})</summary>
+                  <ul>
+                      {% for restaurant in current_order_record.suitable_restaurants %}
+                          <li>{{ restaurant.name }}</li>
+                      {% endfor %}
+                  </ul>
+              </details>
+          {% else %}
+              <p>Нет подходящих</p>
+          {% endif %}
         </td>
-        <td>{{ current_order_record.get_payment_method_display }}</td>
       </tr>
     {% empty %}
     {% endfor %}
