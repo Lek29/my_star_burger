@@ -3,6 +3,10 @@ from django.db.models import Sum, F, DecimalField, Prefetch
 from django.db.models.functions import Coalesce
 from django.core.validators import MinValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
+from django.conf import settings
+from geopy.distance import great_circle
+
+from foodcartapp.geocoding_utils import fetch_coordinates
 
 class Restaurant(models.Model):
     name = models.CharField(
@@ -19,6 +23,22 @@ class Restaurant(models.Model):
         max_length=50,
         blank=True,
     )
+
+    def get_distance_to(self, address):
+        coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, address)
+        if not coords:
+            return float('inf')
+
+        order_lat, order_lon = coords[1], coords[0]
+        rest_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, self.address)
+
+        if not rest_coords:
+            return float('inf')
+
+        rest_lat, rest_lon = rest_coords[1], rest_coords[0]
+        distance_km = great_circle((order_lat, order_lon), (rest_lat, rest_lon)).km
+        return round(distance_km, 1)
+
 
     class Meta:
         verbose_name = 'ресторан'
@@ -129,6 +149,8 @@ class RestaurantMenuItem(models.Model):
 class OrderQuerySet(models.QuerySet):
     ' Кастомный QuerySet для модели Order'
 
+
+
     def annotate_with_total_cost(self):
         cost_per_items = F('items__quantity') * F('items__price_at_purchase')
         sum_of_items_coast = Sum(
@@ -155,27 +177,56 @@ class OrderQuerySet(models.QuerySet):
         )
 
     def get_matching_restaurants_for_order(self, order):
-        restaurants_for_each_product = []
-
         if not order.items.exists():
             return []
 
-        for order_item in order.items.all():
+        if not order.delivery_address:
+            return []
 
-            available_menu_items = getattr(order_item.product, 'available_product_menu_items', [])
 
-            product_restaurants_ids = {item.restaurant_id for item in available_menu_items}
-
-            if not product_restaurants_ids:
+        restaurants_for_each_product = []
+        for item in order.items.all():
+            available_restaurants = [
+                menu_item.restaurant
+                for menu_item in getattr(item.product, 'available_product_menu_items', [])
+            ]
+            if not available_restaurants:
                 return []
-            restaurants_for_each_product.append(product_restaurants_ids)
+            restaurants_for_each_product.append(set(available_restaurants))
 
         if not restaurants_for_each_product:
             return []
 
-        suitable_restaurant_ids = set.intersection(*restaurants_for_each_product)
-        suitable_restaurants = Restaurant.objects.filter(id__in=suitable_restaurant_ids).order_by('name')
-        return list(suitable_restaurants)
+        suitable_restaurants_set = set.intersection(*restaurants_for_each_product)
+
+        delivery_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.delivery_address)
+        if not delivery_coords:
+            return []
+
+        delivery_lat, delivery_lon = float(delivery_coords[1]), float(delivery_coords[0])
+
+        restaurants_with_distance = []
+        for restaurant in suitable_restaurants_set:
+            restaurant_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, restaurant.address)
+
+            if not restaurant_coords:
+                continue
+
+            restaurant_lon, restaurant_lat = float(restaurant_coords[0]), float(restaurant_coords[1])
+
+            distance = great_circle(
+                (delivery_lat, delivery_lon),
+                (restaurant_lat, restaurant_lon)
+            ).km
+
+            restaurant.distance = round(distance)
+            restaurants_with_distance.append(restaurant)
+
+        sorted_restaurants = sorted(
+            [r for r in restaurants_with_distance if hasattr(r, 'distance')],
+            key=lambda r: r.distance
+        )
+        return sorted_restaurants
 
 
 class PaymentMethod(models.TextChoices):

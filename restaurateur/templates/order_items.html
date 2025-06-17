@@ -39,15 +39,24 @@
           Редактировать
           </a>
         <td>
-          {# Отображаем назначенный ресторан, если он есть #}
           {% if current_order_record.restaurant %}
               <strong>{{ current_order_record.restaurant.name }}</strong>
+              {% if current_order_record.assigned_restaurant_distance is not None %}
+                  ({{ current_order_record.assigned_restaurant_distance }} км)
+              {% else %}
+                  (Не удалось рассчитать)
+              {% endif %}
           {% elif current_order_record.suitable_restaurants %}
               <details>
                   <summary>Список ресторанов ({{ current_order_record.suitable_restaurants|length }})</summary>
                   <ul>
                       {% for restaurant in current_order_record.suitable_restaurants %}
-                          <li>{{ restaurant.name }}</li>
+                          <li>
+                            {{ restaurant.name }}
+                            {% if restaurant.distance is not None %}
+                                  ({{ restaurant.distance }} км)
+                            {% endif %}
+                          </li>
                       {% endfor %}
                   </ul>
               </details>

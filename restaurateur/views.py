@@ -6,12 +6,14 @@ from django.urls import reverse_lazy
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import F, Sum, DecimalField
 from django.utils import timezone
+from django.conf import settings
 
 
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
+from geopy.distance import great_circle
 
-
+from foodcartapp.geocoding_utils import fetch_coordinates
 from foodcartapp.models import Product, Restaurant, Order, OrderItem
 
 
@@ -96,27 +98,38 @@ def view_restaurants(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    # orders_query = Order.objects.annotate_with_total_cost().exclude(
-    #     status = Order.STATUS_COMPLETED
-    # ).prefetch_related(
-    #     'items__product'
-    # ).order_by('-id')
-    #
-    # context = {
-    #     'order_records': orders_query
-    # }
-    # return render(request, template_name='order_items.html', context=context)
     orders = Order.objects.annotate_with_total_cost().prefetch_available_restaurants().filter(
         status__in=[Order.STATUS_NEW, Order.STATUS_PREPARING]
     ).order_by('created_at')
 
+    order_records = []
     for order in orders:
+
+        assigned_restaurant_distance = None
+        if order.restaurant and order.delivery_address:
+            order_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.delivery_address)
+            restaurant_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.restaurant.address)
+
+            if order_coords and restaurant_coords:
+                order_lat, order_lon = float(order_coords[1]), float(order_coords[0])
+                restaurant_lon, restaurant_lat = float(restaurant_coords[0]), float(restaurant_coords[1])
+                distance = great_circle(
+                    (order_lat, order_lon),
+                    (restaurant_lat, restaurant_lon)
+                ).km
+                assigned_restaurant_distance = round(distance)
+
+        order.assigned_restaurant_distance = assigned_restaurant_distance
         order.suitable_restaurants = []
         if order.status == Order.STATUS_NEW and not order.restaurant:
-            order.suitable_restaurants = Order.objects.get_matching_restaurants_for_order(order)
+            suitable_restaurants = Order.objects.get_matching_restaurants_for_order(order)
 
 
-    context = {
-        'order_records': orders,
-    }
+            order.suitable_restaurants = suitable_restaurants
+
+        order_records.append(order)
+
+        context = {
+            'order_records': orders,
+        }
     return render(request, template_name='order_items.html', context=context)

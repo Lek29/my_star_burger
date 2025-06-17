@@ -4,6 +4,11 @@ from django.templatetags.static import static
 from django.utils.html import format_html
 from django.db.models import Prefetch
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.conf import settings
+from geopy.distance import great_circle
+
+from foodcartapp.geocoding_utils import fetch_coordinates
+
 
 from .models import Product
 from .models import ProductCategory
@@ -11,6 +16,8 @@ from .models import Restaurant
 from .models import RestaurantMenuItem
 from .models import Order
 from .models import OrderItem
+
+from .geocoding_utils import fetch_coordinates
 
 
 class RestaurantMenuItemInline(admin.TabularInline):
@@ -129,6 +136,7 @@ class OrderAdmin(admin.ModelAdmin):
         'restaurant',
         'status',
         'payment_method',
+        'get_distance_display',
     )
 
     search_fields = (
@@ -165,7 +173,6 @@ class OrderAdmin(admin.ModelAdmin):
         if db_field.name == "restaurant":
             if self.obj:
                 suitable_restaurants = Order.objects.get_matching_restaurants_for_order(self.obj)
-
                 kwargs["queryset"] = Restaurant.objects.filter(id__in=[r.id for r in suitable_restaurants])
             else:
                 kwargs["queryset"] = Restaurant.objects.all()
@@ -204,3 +211,30 @@ class OrderAdmin(admin.ModelAdmin):
             redirect_url = reverse('restaurateur:view_orders')
             return redirect(redirect_url)
         return super().response_add(request, obj, post_url_continue)
+
+
+    def get_distance_display(self, obj):
+        if not obj.restaurant or not obj.delivery_address:
+            return "N/A"
+
+        order_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, obj.delivery_address)
+
+        if not order_coords:
+            return "Ошибка адреса заказа"
+
+        order_lat, order_lon = float(order_coords[1]), float(order_coords[0])
+
+        restaurant_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, obj.restaurant.address)
+        if not restaurant_coords:
+            return "Ошибка адреса ресторана"
+
+        restaurant_lon, restaurant_lat = float(restaurant_coords[0]), float(restaurant_coords[1])
+
+        distance = great_circle(
+            (order_lat, order_lon),
+            (restaurant_lat, restaurant_lon)
+        ).km
+
+        return f"{round(distance)} км"
+
+    get_distance_display.short_description = 'Расстояние до ресторана'
