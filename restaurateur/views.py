@@ -13,8 +13,9 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 from geopy.distance import great_circle
 
-from foodcartapp.geocoding_utils import fetch_coordinates
+from geocoordinates.utils import fetch_coordinates
 from foodcartapp.models import Product, Restaurant, Order, OrderItem
+from geocoordinates.models import GeocodedAddress
 
 
 class Login(forms.Form):
@@ -107,8 +108,10 @@ def view_orders(request):
 
         assigned_restaurant_distance = None
         if order.restaurant and order.delivery_address:
+
             order_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.delivery_address)
             restaurant_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.restaurant.address)
+
 
             if order_coords and restaurant_coords:
                 order_lat, order_lon = float(order_coords[1]), float(order_coords[0])
@@ -120,16 +123,17 @@ def view_orders(request):
                 assigned_restaurant_distance = round(distance)
 
         order.assigned_restaurant_distance = assigned_restaurant_distance
+
         order.suitable_restaurants = []
         if order.status == Order.STATUS_NEW and not order.restaurant:
-            suitable_restaurants = Order.objects.get_matching_restaurants_for_order(order)
 
+            suitable_restaurants = Order.objects.get_matching_restaurants_for_order(order)
 
             order.suitable_restaurants = suitable_restaurants
 
         order_records.append(order)
 
-        context = {
-            'order_records': orders,
-        }
+    context = {
+        'order_records': order_records,
+    }
     return render(request, template_name='order_items.html', context=context)

@@ -7,7 +7,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.conf import settings
 from geopy.distance import great_circle
 
-from foodcartapp.geocoding_utils import fetch_coordinates
+from geocoordinates.utils import fetch_coordinates
 
 
 from .models import Product
@@ -16,8 +16,6 @@ from .models import Restaurant
 from .models import RestaurantMenuItem
 from .models import Order
 from .models import OrderItem
-
-from .geocoding_utils import fetch_coordinates
 
 
 class RestaurantMenuItemInline(admin.TabularInline):
@@ -238,3 +236,5 @@ class OrderAdmin(admin.ModelAdmin):
         return f"{round(distance)} км"
 
     get_distance_display.short_description = 'Расстояние до ресторана'
+
+

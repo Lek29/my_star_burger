@@ -6,7 +6,8 @@ from phonenumber_field.modelfields import PhoneNumberField
 from django.conf import settings
 from geopy.distance import great_circle
 
-from foodcartapp.geocoding_utils import fetch_coordinates
+from geocoordinates.utils import fetch_coordinates
+
 
 class Restaurant(models.Model):
     name = models.CharField(

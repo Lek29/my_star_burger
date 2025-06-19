@@ -24,10 +24,10 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
 
 INSTALLED_APPS = [
     'foodcartapp.apps.FoodcartappConfig',
+    'geocoordinates.apps.GeocoordinatesConfig',
     'restaurateur.apps.RestaurateurConfig',
     'phonenumber_field',
     'rest_framework',
-
     'django_extensions',
     'django.contrib.admin',
     'django.contrib.auth',
