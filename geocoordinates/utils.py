@@ -1,7 +1,5 @@
 import requests
-from django.conf import settings
 from django.utils import timezone
-from geopy.distance import great_circle
 
 from geocoordinates.models import GeocodedAddress
 
@@ -15,16 +13,16 @@ def fetch_coordinates(apikey, address):
     if not created and geocoded_obj.latitude is not None and geocoded_obj.longitude is not None:
         return geocoded_obj.longitude, geocoded_obj.latitude
 
-    base_url = "https://geocode-maps.yandex.ru/1.x"
+    base_url = 'https://geocode-maps.yandex.ru/1.x'
     params = {
-        "apikey": apikey,
-        "geocode": address,
-        "format": "json",
+        'apikey': apikey,
+        'geocode': address,
+        'format': 'json',
     }
     try:
         response = requests.get(base_url, params=params)
         response.raise_for_status()
-        places_found = response.json().get("response", {}).get("GeoObjectCollection", {}).get("featureMember", [])
+        places_found = response.json().get('response', {}).get('GeoObjectCollection', {}).get('featureMember', [])
 
         if not places_found:
             geocoded_obj.latitude = None
@@ -32,7 +30,7 @@ def fetch_coordinates(apikey, address):
 
         else:
             most_relevant = places_found[0]
-            lon, lat = most_relevant["GeoObject"]["Point"]["pos"].split(" ")
+            lon, lat = most_relevant['GeoObject']['Point']['pos'].split(' ')
             geocoded_obj.latitude = float(lat)
             geocoded_obj.longitude = float(lon)
 
@@ -50,5 +48,3 @@ def fetch_coordinates(apikey, address):
     except Exception as e:
         print(f"ОШИБКА: Неизвестная ошибка при обработке ответа геокодера для '{address}': {e}")
         return None
-
-

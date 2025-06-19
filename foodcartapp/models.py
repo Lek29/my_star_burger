@@ -1,10 +1,10 @@
-from django.db import models
-from django.db.models import Sum, F, DecimalField, Prefetch
-from django.db.models.functions import Coalesce
-from django.core.validators import MinValueValidator
-from phonenumber_field.modelfields import PhoneNumberField
 from django.conf import settings
+from django.core.validators import MinValueValidator
+from django.db import models
+from django.db.models import DecimalField, F, Prefetch, Sum
+from django.db.models.functions import Coalesce
 from geopy.distance import great_circle
+from phonenumber_field.modelfields import PhoneNumberField
 
 from geocoordinates.utils import fetch_coordinates
 
@@ -39,7 +39,6 @@ class Restaurant(models.Model):
         rest_lat, rest_lon = rest_coords[1], rest_coords[0]
         distance_km = great_circle((order_lat, order_lon), (rest_lat, rest_lon)).km
         return round(distance_km, 1)
-
 
     class Meta:
         verbose_name = 'ресторан'
@@ -120,7 +119,7 @@ class RestaurantMenuItem(models.Model):
     restaurant = models.ForeignKey(
         Restaurant,
         related_name='menu_items',
-        verbose_name="ресторан",
+        verbose_name='ресторан',
         on_delete=models.CASCADE,
     )
     product = models.ForeignKey(
@@ -143,15 +142,11 @@ class RestaurantMenuItem(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.restaurant.name} - {self.product.name}"
-
+        return f'{self.restaurant.name} - {self.product.name}'
 
 
 class OrderQuerySet(models.QuerySet):
-    ' Кастомный QuerySet для модели Order'
-
-
-
+    """ Кастомный QuerySet для модели Order"""
     def annotate_with_total_cost(self):
         cost_per_items = F('items__quantity') * F('items__price_at_purchase')
         sum_of_items_coast = Sum(
@@ -166,7 +161,6 @@ class OrderQuerySet(models.QuerySet):
             )
         )
         return annotated_queryset
-
 
     def prefetch_available_restaurants(self):
         return self.prefetch_related(
@@ -183,7 +177,6 @@ class OrderQuerySet(models.QuerySet):
 
         if not order.delivery_address:
             return []
-
 
         restaurants_for_each_product = []
         for item in order.items.all():
@@ -280,11 +273,11 @@ class Order(models.Model):
         region='RU',
         db_index=True,
     )
-    delivery_address=models.CharField(
+    delivery_address = models.CharField(
         'Адрес доставки',
         max_length=200,
     )
-    status=models.CharField(
+    status = models.CharField(
         'Статус заказов',
         max_length=50,
         choices=ORDER_STATUSES,
@@ -314,6 +307,7 @@ class Order(models.Model):
     )
 
     objects = OrderQuerySet.as_manager()
+
     class Meta:
         ordering = ['id']
         verbose_name = 'заказ'
@@ -353,6 +347,4 @@ class OrderItem(models.Model):
         unique_together = [['order', 'product']]
 
     def __str__(self):
-        return f"{self.quantity} x {self.product.name} для заказа №{self.order.id}"
-
-
+        return f'{self.quantity} x {self.product.name} для заказа №{self.order.id}'

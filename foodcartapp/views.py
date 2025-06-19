@@ -1,17 +1,12 @@
-import json
-
-from django.template.defaultfilters import first
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
 from django.http import JsonResponse
 from django.templatetags.static import static
-from .models import Order, OrderItem
-from .serializers import OrderSerializer
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 from .models import Product
-
+from .serializers import OrderSerializer
 
 
 def banners_list_api(request):
@@ -74,12 +69,8 @@ def register_order(request):
     if serializer.is_valid(raise_exception=True):
         saved_order_instance = serializer.save()
 
-        print(f"Заказ №{saved_order_instance.id} создан через сериализатор.")
+        print(f'Заказ №{saved_order_instance.id} создан через сериализатор.')
 
         response_serializer = OrderSerializer(saved_order_instance)
 
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-
-
-
-

@@ -1,21 +1,15 @@
 from django import forms
-from django.db.models.functions import Coalesce
-from django.shortcuts import redirect, render
-from django.views import View
-from django.urls import reverse_lazy
-from django.contrib.auth.decorators import user_passes_test
-from django.db.models import F, Sum, DecimalField
-from django.utils import timezone
 from django.conf import settings
-
-
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
+from django.contrib.auth.decorators import user_passes_test
+from django.shortcuts import redirect, render
+from django.urls import reverse_lazy
+from django.views import View
 from geopy.distance import great_circle
 
+from foodcartapp.models import Order, Product, Restaurant
 from geocoordinates.utils import fetch_coordinates
-from foodcartapp.models import Product, Restaurant, Order, OrderItem
-from geocoordinates.models import GeocodedAddress
 
 
 class Login(forms.Form):
@@ -38,7 +32,7 @@ class Login(forms.Form):
 class LoginView(View):
     def get(self, request, *args, **kwargs):
         form = Login()
-        return render(request, "login.html", context={
+        return render(request, 'login.html', context={
             'form': form
         })
 
@@ -53,10 +47,10 @@ class LoginView(View):
             if user:
                 login(request, user)
                 if user.is_staff:  # FIXME replace with specific permission
-                    return redirect("restaurateur:RestaurantView")
-                return redirect("start_page")
+                    return redirect('restaurateur:RestaurantView')
+                return redirect('start_page')
 
-        return render(request, "login.html", context={
+        return render(request, 'login.html', context={
             'form': form,
             'ivalid': True,
         })
@@ -84,7 +78,7 @@ def view_products(request):
             (product, ordered_availability)
         )
 
-    return render(request, template_name="products_list.html", context={
+    return render(request, template_name='products_list.html', context={
         'products_with_restaurant_availability': products_with_restaurant_availability,
         'restaurants': restaurants,
     })
@@ -92,7 +86,7 @@ def view_products(request):
 
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_restaurants(request):
-    return render(request, template_name="restaurants_list.html", context={
+    return render(request, template_name='restaurants_list.html', context={
         'restaurants': Restaurant.objects.all(),
     })
 
@@ -111,7 +105,6 @@ def view_orders(request):
 
             order_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.delivery_address)
             restaurant_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, order.restaurant.address)
-
 
             if order_coords and restaurant_coords:
                 order_lat, order_lon = float(order_coords[1]), float(order_coords[0])

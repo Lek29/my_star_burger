@@ -1,9 +1,8 @@
 from django.urls import path
 
-from .views import product_list_api, banners_list_api, register_order
+from .views import banners_list_api, product_list_api, register_order
 
-
-app_name = "foodcartapp"
+app_name = 'foodcartapp'
 
 urlpatterns = [
     path('products/', product_list_api),

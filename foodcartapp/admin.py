@@ -1,21 +1,14 @@
+from django.conf import settings
 from django.contrib import admin
-from django.shortcuts import reverse, redirect
+from django.shortcuts import redirect, reverse
 from django.templatetags.static import static
 from django.utils.html import format_html
-from django.db.models import Prefetch
-from django.utils.http import url_has_allowed_host_and_scheme
-from django.conf import settings
 from geopy.distance import great_circle
 
 from geocoordinates.utils import fetch_coordinates
 
-
-from .models import Product
-from .models import ProductCategory
-from .models import Restaurant
-from .models import RestaurantMenuItem
-from .models import Order
-from .models import OrderItem
+from .models import (Order, OrderItem, Product, ProductCategory, Restaurant,
+                     RestaurantMenuItem)
 
 
 class RestaurantMenuItemInline(admin.TabularInline):
@@ -91,8 +84,8 @@ class ProductAdmin(admin.ModelAdmin):
 
     class Media:
         css = {
-            "all": (
-                static("admin/foodcartapp.css")
+            'all': (
+                static('admin/foodcartapp.css')
             )
         }
 
@@ -159,23 +152,20 @@ class OrderAdmin(admin.ModelAdmin):
         OrderItemInline,
     ]
 
-
     def get_form(self, request, obj=None, **kwargs):
         if obj:
             obj = Order.objects.prefetch_available_restaurants().get(pk=obj.pk)
         self.obj = obj
         return super().get_form(request, obj, **kwargs)
 
-
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "restaurant":
+        if db_field.name == 'restaurant':
             if self.obj:
                 suitable_restaurants = Order.objects.get_matching_restaurants_for_order(self.obj)
-                kwargs["queryset"] = Restaurant.objects.filter(id__in=[r.id for r in suitable_restaurants])
+                kwargs['queryset'] = Restaurant.objects.filter(id__in=[r.id for r in suitable_restaurants])
             else:
-                kwargs["queryset"] = Restaurant.objects.all()
+                kwargs['queryset'] = Restaurant.objects.all()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
-
 
     def save_model(self, request, obj, form, change):
         if not change and not obj.restaurant:
@@ -185,8 +175,6 @@ class OrderAdmin(admin.ModelAdmin):
 
         super().save_model(request, obj, form, change)
 
-
-
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
         for instance in instances:
@@ -195,36 +183,33 @@ class OrderAdmin(admin.ModelAdmin):
             instance.save()
         formset.save_m2m()
 
-
     def response_change(self, request, obj):
 
-        if "_save" in request.POST or "_continue" in request.POST:
+        if '_save' in request.POST or '_continue' in request.POST:
 
             return redirect(reverse('restaurateur:view_orders'))
         return super().response_change(request, obj)
 
-
     def response_add(self, request, obj, post_url_continue=None):
-        if "_save" in request.POST or "_continue" in request.POST:
+        if '_save' in request.POST or '_continue' in request.POST:
             redirect_url = reverse('restaurateur:view_orders')
             return redirect(redirect_url)
         return super().response_add(request, obj, post_url_continue)
 
-
     def get_distance_display(self, obj):
         if not obj.restaurant or not obj.delivery_address:
-            return "N/A"
+            return 'N/A'
 
         order_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, obj.delivery_address)
 
         if not order_coords:
-            return "Ошибка адреса заказа"
+            return 'Ошибка адреса заказа'
 
         order_lat, order_lon = float(order_coords[1]), float(order_coords[0])
 
         restaurant_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, obj.restaurant.address)
         if not restaurant_coords:
-            return "Ошибка адреса ресторана"
+            return 'Ошибка адреса ресторана'
 
         restaurant_lon, restaurant_lat = float(restaurant_coords[0]), float(restaurant_coords[1])
 
@@ -233,8 +218,6 @@ class OrderAdmin(admin.ModelAdmin):
             (restaurant_lat, restaurant_lon)
         ).km
 
-        return f"{round(distance)} км"
+        return f'{round(distance)} км'
 
     get_distance_display.short_description = 'Расстояние до ресторана'
-
-

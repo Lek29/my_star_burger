@@ -1,12 +1,13 @@
-from rest_framework import serializers
+from django.db import transaction
 from phonenumber_field.serializerfields import PhoneNumberField
-from .models import Product, Order, OrderItem
-from django.db import  transaction
+from rest_framework import serializers
+
+from .models import Order, OrderItem, Product
+
 
 class OrderItemSerializer(serializers.Serializer):
     product = serializers.IntegerField(min_value=1)
     quantity = serializers.IntegerField(min_value=1)
-
 
 
 class OrderSerializer(serializers.Serializer):
@@ -47,4 +48,3 @@ class OrderSerializer(serializers.Serializer):
                 )
 
         return order_instance
-

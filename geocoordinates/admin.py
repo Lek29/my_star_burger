@@ -1,5 +1,7 @@
 from django.contrib import admin
+
 from .models import GeocodedAddress
+
 
 @admin.register(GeocodedAddress)
 class GeocodedAddressAdmin(admin.ModelAdmin):
