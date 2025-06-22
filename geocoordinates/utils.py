@@ -43,8 +43,6 @@ def fetch_coordinates(apikey, address):
             return None
 
     except requests.exceptions.RequestException as e:
-        print(f"ОШИБКА: Ошибка подключения к Яндекс.Геокодеру для '{address}': {e}")
         return None
     except Exception as e:
-        print(f"ОШИБКА: Неизвестная ошибка при обработке ответа геокодера для '{address}': {e}")
         return None
