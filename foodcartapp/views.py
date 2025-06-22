@@ -69,8 +69,6 @@ def register_order(request):
     serializer.is_valid(raise_exception=True)
     saved_order_instance = serializer.save()
 
-    print(f'Заказ №{saved_order_instance.id} создан через сериализатор.')
-
     response_serializer = OrderSerializer(saved_order_instance)
 
     return Response(response_serializer.data, status=status.HTTP_201_CREATED)
