@@ -66,11 +66,11 @@ def product_list_api(request):
 def register_order(request):
     serializer = OrderSerializer(data=request.data)
 
-    if serializer.is_valid(raise_exception=True):
-        saved_order_instance = serializer.save()
+    serializer.is_valid(raise_exception=True)
+    saved_order_instance = serializer.save()
 
-        print(f'Заказ №{saved_order_instance.id} создан через сериализатор.')
+    print(f'Заказ №{saved_order_instance.id} создан через сериализатор.')
 
-        response_serializer = OrderSerializer(saved_order_instance)
+    response_serializer = OrderSerializer(saved_order_instance)
 
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+    return Response(response_serializer.data, status=status.HTTP_201_CREATED)
