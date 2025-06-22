@@ -6,7 +6,7 @@ from .models import Order, OrderItem, Product
 
 
 class OrderItemSerializer(serializers.Serializer):
-    product = serializers.IntegerField(min_value=1)
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
     quantity = serializers.IntegerField(min_value=1)
 
 
@@ -34,15 +34,9 @@ class OrderSerializer(serializers.ModelSerializer):
             order_instance = super().create(validated_data)
 
             for item_payload in order_items_payload:
-                product_id = item_payload['product']
+                product_object = item_payload['product']
                 quantity_value = item_payload['quantity']
 
-                try:
-                    product_object = Product.objects.get(id=product_id)
-                except Product.DoesNotExist:
-                    raise serializers.ValidationError(
-                        {'products': [f'Недопустимый первичный ключ "{product_id}".']}
-                    )
 
                 OrderItem.objects.create(
                     order=order_instance,
