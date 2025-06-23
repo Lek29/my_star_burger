@@ -33,16 +33,23 @@ class OrderSerializer(serializers.ModelSerializer):
         with transaction.atomic():
             order_instance = super().create(validated_data)
 
+            order_items_to_create = []
+
+
             for item_payload in order_items_payload:
                 product_object = item_payload['product']
                 quantity_value = item_payload['quantity']
 
 
-                OrderItem.objects.create(
+                order_item = OrderItem(
                     order=order_instance,
                     product=product_object,
                     quantity=quantity_value,
                     price_at_purchase=product_object.price
                 )
+
+                order_items_to_create.append(order_item)
+
+            OrderItem.objects.bulk_create(order_items_to_create)
 
         return order_instance
