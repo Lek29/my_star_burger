@@ -1,7 +1,26 @@
 import requests
 from django.utils import timezone
+from django.conf import settings
 
 from geocoordinates.models import GeocodedAddress
+
+
+def get_or_create_geocoded_address(address_string: str) -> GeocodedAddress:
+    geocoded_obj, created = GeocodedAddress.objects.get_or_create(address=address_string)
+
+    if created or geocoded_obj.latitude is None or geocoded_obj.longitude is None:
+        coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, address_string)
+        if coords:
+            geocoded_obj.latitude = coords[1]
+            geocoded_obj.longitude = coords[0]
+            geocoded_obj.queried_at = timezone.now()
+            geocoded_obj.save()
+        else:
+            geocoded_obj.latitude = None
+            geocoded_obj.longitude = None
+            geocoded_obj.queried_at = timezone.now()
+            geocoded_obj.save()
+    return geocoded_obj
 
 
 def fetch_coordinates(apikey, address):
@@ -46,3 +65,5 @@ def fetch_coordinates(apikey, address):
         return None
     except Exception as e:
         return None
+
+

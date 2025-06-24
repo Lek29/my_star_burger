@@ -3,10 +3,13 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import DecimalField, F, Prefetch, Sum
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 from geopy.distance import great_circle
 from phonenumber_field.modelfields import PhoneNumberField
 
+from geocoordinates.models import GeocodedAddress
 from geocoordinates.utils import fetch_coordinates
+from geocoordinates.utils import get_or_create_geocoded_address
 
 
 class Restaurant(models.Model):
@@ -24,19 +27,34 @@ class Restaurant(models.Model):
         max_length=50,
         blank=True,
     )
+    geocoded_address = models.ForeignKey(
+        GeocodedAddress,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='related_restaurants',
+        verbose_name='Геокодированный адрес ресторана'
+    )
+
+    def save(self, *args, **kwargs):
+        if not self.pk or self.address != self.__original_address or not self.geocoded_address_id:
+            self.geocoded_address = get_or_create_geocoded_address(self.address)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__original_address = self.address if self.pk else None
+
 
     def get_distance_to(self, address):
-        coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, address)
-        if not coords:
+        if not self.geocoded_address or self.geocoded_address.latitude is None or self.geocoded_address.longitude is None:
             return float('inf')
 
-        order_lat, order_lon = coords[1], coords[0]
-        rest_coords = fetch_coordinates(settings.YANDEX_GEOCODER_API_KEY, self.address)
-
-        if not rest_coords:
+        if not address or address.latitude is None or address.longitude is None:
             return float('inf')
 
-        rest_lat, rest_lon = rest_coords[1], rest_coords[0]
+        rest_lat, rest_lon = self.geocoded_address.latitude, self.geocoded_address.longitude
+        order_lat, order_lon = address.latitude, address.longitude
+
         distance_km = great_circle((order_lat, order_lon), (rest_lat, rest_lon)).km
         return round(distance_km, 1)
 
@@ -277,6 +295,14 @@ class Order(models.Model):
         'Адрес доставки',
         max_length=200,
     )
+    geocoded_delivery_address = models.ForeignKey(
+        GeocodedAddress,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='related_orders',
+        verbose_name='Геокодированный адрес доставки'
+    )
     status = models.CharField(
         'Статус заказов',
         max_length=50,
@@ -307,6 +333,16 @@ class Order(models.Model):
     )
 
     objects = OrderQuerySet.as_manager()
+
+    def save(self, *args, **kwargs):
+        if not self.pk or self.delivery_address != self.__original_delivery_address or not self.geocoded_delivery_address_id:
+            self.geocoded_delivery_address = get_or_create_geocoded_address(self.delivery_address)
+        super().save(*args, **kwargs)
+
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__original_delivery_address = self.delivery_address if self.pk else None
 
     class Meta:
         ordering = ['id']

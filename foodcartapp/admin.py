@@ -145,8 +145,9 @@ class OrderAdmin(admin.ModelAdmin):
         'restaurant',
         'called_at',
         'delivered_at',
+        'geocoded_delivery_address',
     )
-    readonly_fields = ('created_at',)
+    readonly_fields = ('created_at', 'geocoded_delivery_address')
 
     inlines = [
         OrderItemInline,

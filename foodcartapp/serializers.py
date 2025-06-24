@@ -1,7 +1,11 @@
 from django.db import transaction
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
+from django.conf import settings
+from django.utils import timezone
 
+from geocoordinates.models import GeocodedAddress
+from geocoordinates.utils import fetch_coordinates, get_or_create_geocoded_address
 from .models import Order, OrderItem, Product
 
 
@@ -27,15 +31,19 @@ class OrderSerializer(serializers.ModelSerializer):
             'address',
             'products',
         ]
+
     def create(self, validated_data):
         order_items_payload = validated_data.pop('products')
+
+        delivery_address_str = validated_data['delivery_address']
+        geocoded_address_obj = get_or_create_geocoded_address(delivery_address_str)
+
+        validated_data['geocoded_delivery_address'] = geocoded_address_obj
 
         with transaction.atomic():
             order_instance = super().create(validated_data)
 
             order_items_to_create = []
-
-
             for item_payload in order_items_payload:
                 product_object = item_payload['product']
                 quantity_value = item_payload['quantity']
