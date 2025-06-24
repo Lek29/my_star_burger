@@ -319,7 +319,6 @@ class Order(models.Model):
     customer_comment = models.TextField(
         'Комментарий',
         blank=True,
-        null=True,
         help_text='Примечания к заказу'
     )
     restaurant = models.ForeignKey(
