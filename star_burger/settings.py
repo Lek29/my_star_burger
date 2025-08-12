@@ -37,6 +37,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -132,4 +133,10 @@ STATICFILES_DIRS = [
 
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'drf_standardized_errors.handler.exception_handler'
+}
+
+ROLLBAR = {
+    'access_token': env.str('ROLLBAR_ACCESS_TOKEN'),
+    'environment': env.str('ROLLBAR_ENV_NAME'),
+    'root': BASE_DIR,
 }

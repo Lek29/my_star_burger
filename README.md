@@ -13,6 +13,7 @@
 
 Третий интерфейс — это админка. Преимущественно им пользуются программисты при разработке сайта. Также сюда заходит менеджер, чтобы обновить меню ресторанов Star Burger.
 
+---
 ## Как запустить dev-версию сайта
 
 Для запуска сайта нужно запустить **одновременно** бэкенд и фронтенд, в двух терминалах.
@@ -37,7 +38,7 @@ python --version
 ```
 **Важно!** Версия Python должна быть не ниже 3.6.
 
-Возможно, вместо команды `python` здесь и в остальных инструкциях этого README придётся использовать `python3`. Зависит это от операционной системы и от того, установлен ли у вас Python старой второй версии. 
+Возможно, вместо команды `python` здесь и в остальных инструкциях этого README придётся использовать `python3`. Зависит это от операционной системы и от того, установлен ли у вас Python старой второй версии.
 
 В каталоге проекта создайте виртуальное окружение:
 ```sh
@@ -133,6 +134,63 @@ Parcel будет следить за файлами в каталоге `bundle
 
 **Сбросьте кэш браузера <kbd>Ctrl-F5</kbd>.** Браузер при любой возможности старается кэшировать файлы статики: CSS, картинки и js-код. Порой это приводит к странному поведению сайта, когда код уже давно изменился, но браузер этого не замечает и продолжает использовать старую закэшированную версию. В норме Parcel решает эту проблему самостоятельно. Он следит за пересборкой фронтенда и предупреждает JS-код в браузере о необходимости подтянуть свежий код. Но если вдруг что-то у вас идёт не так, то начните ремонт со сброса браузерного кэша, жмите <kbd>Ctrl-F5</kbd>.
 
+---
+
+## Установка и настройка Rollbar
+1. Установка SDK:
+    Установите библиотеку Rollbar в виртуальное окружение:
+
+```bash
+
+/opt/starburger/venv/bin/pip install rollbar
+```
+2. Настройка `settings.py`:
+
+    В файле `star_burger/settings.py` добавьте Rollbar в MIDDLEWARE и настройте его.
+
+```python
+
+# В начале файла
+# MIDDLEWARE = [
+#    'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
+#    ...
+# ]
+
+# В конце файла
+ROLLBAR = {
+    'access_token': env.str('ROLLBAR_ACCESS_TOKEN'),
+    'environment': env.str('ROLLBAR_ENV_NAME'),
+    'root': BASE_DIR,
+}
+```
+3. Создание и настройка .env:
+
+    Создайте файл `.env` в корневой папке проекта `/opt/starburger/` и добавьте в него ваш токен и имя окружения.
+
+```
+   ROLLBAR_ACCESS_TOKEN='ваш_токен_от_rollbar'
+   ROLLBAR_ENV_NAME='production'
+```
+4. Настройка systemd:
+
+    Чтобы Gunicorn мог прочитать `.env`-файл, необходимо указать путь к нему в юните `starburger.service`.
+
+    Откройте файл `/etc/systemd/system/starburger.service` и добавьте строку `EnvironmentFile` в секцию `[Service]`.
+
+```
+[Service]
+User=root
+WorkingDirectory=/opt/starburger/
+EnvironmentFile=/opt/starburger/.env
+ExecStart=/opt/starburger/venv/bin/gunicorn star_burger.wsgi:application --bind 0.0.0.0:8000
+```
+После изменений перезагрузите systemd и Gunicorn:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart starburger.service
+```
+----
 
 ## Как запустить prod-версию сайта
 
@@ -147,7 +205,7 @@ Parcel будет следить за файлами в каталоге `bundle
 - `DEBUG` — дебаг-режим. Поставьте `False`.
 - `SECRET_KEY` — секретный ключ проекта. Он отвечает за шифрование на сайте. Например, им зашифрованы все пароли на вашем сайте.
 - `ALLOWED_HOSTS` — [см. документацию Django](https://docs.djangoproject.com/en/3.1/ref/settings/#allowed-hosts)
-
+---
 ## Цели проекта
 
 Код написан в учебных целях — это урок в курсе по Python и веб-разработке на сайте [Devman](https://dvmn.org). За основу был взят код проекта [FoodCart](https://github.com/Saibharath79/FoodCart).
