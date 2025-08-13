@@ -206,6 +206,102 @@ sudo systemctl restart starburger.service
 - `SECRET_KEY` — секретный ключ проекта. Он отвечает за шифрование на сайте. Например, им зашифрованы все пароли на вашем сайте.
 - `ALLOWED_HOSTS` — [см. документацию Django](https://docs.djangoproject.com/en/3.1/ref/settings/#allowed-hosts)
 ---
+
+## Перенос базы данных SQLite на PostgreSQL
+Этот раздел описывает процесс перехода с базы данных `SQLite`, используемой для локальной разработки, на PostgreSQL, который лучше подходит для развёртывания проекта.
+
+1. **Локальная настройка**
+
+    Чтобы запустить проект локально с `PostgreSQL`, выполните следующие шаги.
+
+   1.Установка PostgreSQL
+
+    * Установите `PostgreSQL` и `pgAdmin4` на свой компьютер.
+
+    2.Создание базы данных и пользователя
+
+    * Через `pgAdmin4` создайте новую базу данных (например, `starburger_db`) и пользователя (`starburger_user`) с паролем.
+
+    * Предоставьте пользователю все права доступа к этой базе.
+
+    3.Конфигурация проекта
+
+    * В файле `settings.py` укажите настройки для подключения к PostgreSQL.
+
+    * Если вы используете PyCharm (Windows), используйте localhost в качестве хоста.
+
+    * Если вы используете WSL (Linux), найдите IP-адрес Windows-машины командой ipconfig.exe и используйте его.
+
+```python
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'starburger_db',
+        'USER': 'starburger_user',
+        'PASSWORD': 'ваш_пароль',
+        'HOST': 'localhost', # или '172.30.240.1' для WSL
+        'PORT': '5432',
+    }
+}
+```
+---
+2. **Миграция данных**
+
+Для переноса данных из старой базы SQLite в новую PostgreSQL выполните следующие команды:
+
+1. Создайте дамп данных из SQLite
+
+    * Временно верните настройки `DATABASES` в `settings.py` на SQLite.
+
+    * Выполните дамп данных, исключив системные таблицы:
+
+        ```bash
+
+        python manage.py dumpdata --exclude auth.permission --exclude contenttypes --exclude admin.logentry --output dump.json
+        ```
+    * Верните настройки DATABASES обратно на PostgreSQL.
+
+2. Выполните миграции
+
+    * Запустите миграции, чтобы создать все таблицы в новой базе данных `PostgreSQL`:
+
+    ```bash
+
+    python manage.py migrate
+    ```
+
+3. Загрузите данные
+
+    * Загрузите данные из файла `dump.json` в новую базу:
+
+    ```bash
+        python manage.py loaddata dump.json
+    ```
+
+----
+
+3. **Типовые проблемы и их решения**
+
+    * `OperationalError: Connection refused`:
+
+        * Причина: Сервер `PostgreSQL` не запущен или брандмауэр блокирует подключение.
+
+        * Решение: Убедитесь, что служба `PostgreSQL` запущена в `services.msc` и что порт `5432` разрешён в брандмауэре.
+
+    * `OperationalError: psycopg2.OperationalError`:
+
+        * Причина: Неверные имя пользователя, пароль или имя базы данных.
+
+        * Решение: Тщательно проверьте все данные для подключения в `settings.py` и `pgAdmin4`.
+
+    * `CommandError: Unable to serialize database`:
+
+        * Причина: Попытка сделать дамп из пустой базы `PostgreSQL`.
+
+        * Решение: Временно переключитесь на `SQLite` в `settings.py` для создания дампа.
+___
+
 ## Цели проекта
 
 Код написан в учебных целях — это урок в курсе по Python и веб-разработке на сайте [Devman](https://dvmn.org). За основу был взят код проекта [FoodCart](https://github.com/Saibharath79/FoodCart).

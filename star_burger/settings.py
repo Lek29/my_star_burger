@@ -2,13 +2,15 @@ import os
 
 import dj_database_url
 from environs import Env
+from pathlib import Path
 
 env = Env()
 env.read_env()
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+DEFAULT_CHARSET = 'utf-8'
 
 SECRET_KEY = env('SECRET_KEY')
 DEBUG = env.bool('DEBUG', True)
@@ -89,10 +91,23 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:////{0}'.format(os.path.join(BASE_DIR, 'db.sqlite3'))
-    )
+    'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'starburger_db',
+            'USER': 'Lek',
+            'PASSWORD': '157766',
+            'HOST': '127.0.0.1',
+            'PORT': '5432',
+        }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {
