@@ -1,13 +1,12 @@
 import os
 
-import dj_database_url
 from environs import Env
 from pathlib import Path
 
 env = Env()
 env.read_env()
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 DEFAULT_CHARSET = 'utf-8'
@@ -20,7 +19,7 @@ YANDEX_GEOCODER_API_KEY = env('YANDEX_GEOCODER_API_KEY')
 
 
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['lek29.ru', 'www.lek29.ru', '147.45.255.37'])
 
 INSTALLED_APPS = [
     'foodcartapp.apps.FoodcartappConfig',
@@ -100,13 +99,6 @@ DATABASES = {
             'PORT': '5432',
         }
 }
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
 
 
 AUTH_PASSWORD_VALIDATORS = [
