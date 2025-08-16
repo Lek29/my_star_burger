@@ -332,7 +332,7 @@ ssh username@your_server_ip
 ----
 
 ## Рабочий сайт
-[Starburger](hhtps://lek29.ru)
+[Starburger](https://lek29.ru)
 
 ## Цели проекта
 
