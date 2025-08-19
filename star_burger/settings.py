@@ -1,3 +1,4 @@
+import dj_database_url
 import os
 
 import dj_database_url
@@ -139,6 +140,6 @@ REST_FRAMEWORK = {
 
 ROLLBAR = {
     'access_token': env.str('ROLLBAR_ACCESS_TOKEN', default=''),
-    'environment': env.str('ROLLBAR_ENV_NAME',default='development'),
+    'environment': env.str('ROLLBAR_ENV_NAME', default='development'),
     'root': BASE_DIR,
 }

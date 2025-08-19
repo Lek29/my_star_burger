@@ -222,3 +222,5 @@ class OrderAdmin(admin.ModelAdmin):
         return f'{round(distance)} км'
 
     get_distance_display.short_description = 'Расстояние до ресторана'
+
+
