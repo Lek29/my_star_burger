@@ -145,3 +145,7 @@ cython_debug/
 .parcel-cache/
 .idea/
 .flake8
+staticfiles/
+__pycache__/
+.idea/
+.env

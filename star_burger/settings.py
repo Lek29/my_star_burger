@@ -1,7 +1,10 @@
 import os
 
+import dj_database_url
 from environs import Env
 from pathlib import Path
+
+from pygments.lexer import default
 
 env = Env()
 env.read_env()
@@ -12,12 +15,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_CHARSET = 'utf-8'
 
 SECRET_KEY = env('SECRET_KEY')
-DEBUG = env.bool('DEBUG', True)
+DEBUG = env.bool('DJANGO_DEBUG', default=False)
 
 YANDEX_GEOCODER_API_KEY = env('YANDEX_GEOCODER_API_KEY')
-
-
-
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['lek29.ru', 'www.lek29.ru', '147.45.255.37'])
 
@@ -90,14 +90,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
 
 DATABASES = {
-    'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'starburger_db',
-            'USER': 'Lek',
-            'PASSWORD': '157766',
-            'HOST': '127.0.0.1',
-            'PORT': '5432',
-        }
+    'default': dj_database_url.config(
+        default=env('DB_URL')
+    )
 }
 
 
@@ -143,7 +138,7 @@ REST_FRAMEWORK = {
 }
 
 ROLLBAR = {
-    'access_token': env.str('ROLLBAR_ACCESS_TOKEN'),
-    'environment': env.str('ROLLBAR_ENV_NAME'),
+    'access_token': env.str('ROLLBAR_ACCESS_TOKEN', default=''),
+    'environment': env.str('ROLLBAR_ENV_NAME',default='development'),
     'root': BASE_DIR,
 }
