@@ -19,7 +19,7 @@ DEBUG = env.bool('DJANGO_DEBUG', default=False)
 
 YANDEX_GEOCODER_API_KEY = env('YANDEX_GEOCODER_API_KEY')
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['lek29.ru', 'www.lek29.ru', '147.45.255.37'])
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 INSTALLED_APPS = [
     'foodcartapp.apps.FoodcartappConfig',
