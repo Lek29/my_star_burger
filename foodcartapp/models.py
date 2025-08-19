@@ -11,6 +11,7 @@ from geocoordinates.models import GeocodedAddress
 from geocoordinates.utils import fetch_coordinates
 from geocoordinates.utils import get_or_create_geocoded_address
 
+# Проверка работы деплоя
 
 class Restaurant(models.Model):
     name = models.CharField(
