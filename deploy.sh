@@ -7,7 +7,7 @@ echo "--- 2. Сборка новых Docker-образов... ---"
 docker compose build
 
 echo "--- 3. Сборка фронтенда (Parcel)... ---"
-docker compose run --rm frontend_builder
+docker compose run --rm frontend_builder install --fetch-retry-maxtimeout 600000
 
 echo "--- 4. Выполнение миграций БД... ---"
 docker compose run --rm web python manage.py migrate
