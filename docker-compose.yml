@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:15
     container_name: starburger_db
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_DB: starburger
       POSTGRES_USER: starburger
@@ -27,6 +27,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart:
+      always
 
   nginx:
     image: nginx:latest
@@ -41,6 +43,8 @@ services:
       - /etc/letsencrypt/live/lek29.ru/privkey.pem:/etc/ssl/privkey.key:ro
     depends_on:
       - web
+    restart:
+      always
 
   frontend_builder:
     image: node:16.16-alpine
