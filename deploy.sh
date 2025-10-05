@@ -8,6 +8,7 @@ docker compose build
 
 echo "--- 3. Сборка фронтенда (Parcel)... ---"
 docker compose run --rm frontend_builder install --fetch-retry-maxtimeout 600000
+docker compose run --rm frontend_builder npm run build
 
 echo "--- 4. Выполнение миграций БД... ---"
 docker compose run --rm web python manage.py migrate
