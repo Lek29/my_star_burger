@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:15
+    container_name: starburger_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: starburger
+      POSTGRES_USER: starburger
+      POSTGRES_PASSWORD: starburger
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U starburger"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    command: gunicorn star_burger.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend_dist:/var/www/frontend/
+      - ./media:/var/www/media/
+      - /etc/letsencrypt/live/lek29.ru/fullchain.pem:/etc/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/lek29.ru/privkey.pem:/etc/ssl/privkey.key:ro
+    depends_on:
+      - web
+
+  frontend_builder:
+    image: node:16.16-alpine
+    volumes:
+      - .:/app
+      - /app/node_modules
+    working_dir: /app
+    command: /bin/sh -c "npm install && npm run build"
+    depends_on:
+      - db
+
+volumes:
+  db_data:
+
