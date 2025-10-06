@@ -38,12 +38,20 @@ class Restaurant(models.Model):
     )
 
     def save(self, *args, **kwargs):
-        if not self.pk or self.address != self.__original_address or not self.geocoded_address_id:
+        if self.pk:
+            self.__original_address = self.address
+
+        address_changed = self.pk and self.address != self.__original_address
+
+        if not self.geocoded_address_id or address_changed:
             self.geocoded_address = get_or_create_geocoded_address(self.address)
+
+        super().save(*args, **kwargs)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__original_address = self.address if self.pk else None
+
 
 
     def get_distance_to(self, address):
