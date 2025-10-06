@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('foodcartapp', '0047_order_geocoded_delivery_address_and_more'),
+        ('foodcartapp', '0047_restaurant_geocoded_address'),
         ('foodcartapp', '0049_alter_order_customer_comment'),
     ]
 
