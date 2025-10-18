@@ -10,11 +10,11 @@ STAGING="--staging"
 echo "Начало получения сертификата для $DOMAIN..."
 
 # 1. Поднимаем Nginx, Web и Frontend для Certbot Challenge
-docker compose up -d --build nginx web frontend || { echo "Ошибка запуска сервисов."; exit 1; }
+docker compose -f docker-compose.prod.yaml up -d --build nginx web frontend  || { echo "Ошибка запуска сервисов."; exit 1; }
 
 # 2. Ожидание готовности Nginx
 echo "Ожидаем Nginx..."
-while ! docker compose exec nginx nc -z localhost 80; do
+while ! docker compose -f docker-compose.prod.yaml exec nginx nc -z localhost 80; do
     sleep 1
 done
 
@@ -27,8 +27,9 @@ docker compose run --rm certbot \
     --agree-tos \
     -n || { echo "Ошибка Certbot. Отмена."; docker compose down; exit 1; }
 
+
 # 4. Выключаем временные сервисы
 echo "Сертификат получен. Выключаем временные сервисы."
-docker compose down
+docker compose -f docker-compose.prod.yaml down
 
-echo "Инициализация SSL завершена. Теперь запускайте продакшен: docker compose up -d --build"
+echo "Инициализация SSL завершена. Теперь запускайте продакшен: docker compose -f docker-compose.prod.yaml up -d --build"
