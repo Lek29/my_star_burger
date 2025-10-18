@@ -10,25 +10,25 @@ STAGING="--staging"
 echo "Начало получения сертификата для $DOMAIN..."
 
 # 1. Поднимаем Nginx, Web и Frontend для Certbot Challenge
-docker-compose up -d --build nginx web frontend || { echo "Ошибка запуска сервисов."; exit 1; }
+docker compose up -d --build nginx web frontend || { echo "Ошибка запуска сервисов."; exit 1; }
 
 # 2. Ожидание готовности Nginx
 echo "Ожидаем Nginx..."
-while ! docker-compose exec nginx nc -z localhost 80; do
+while ! docker compose exec nginx nc -z localhost 80; do
     sleep 1
 done
 
 # 3. Запускаем Certbot для получения сертификата
-docker-compose run --rm certbot \
+docker compose run --rm certbot \
     certonly --webroot -w /var/www/certbot \
     -d $DOMAIN \
     --email $EMAIL \
     $STAGING \
     --agree-tos \
-    -n || { echo "Ошибка Certbot. Отмена."; docker-compose down; exit 1; }
+    -n || { echo "Ошибка Certbot. Отмена."; docker compose down; exit 1; }
 
 # 4. Выключаем временные сервисы
 echo "Сертификат получен. Выключаем временные сервисы."
-docker-compose down
+docker compose down
 
-echo "Инициализация SSL завершена. Теперь запускайте продакшен: docker-compose up -d --build"
+echo "Инициализация SSL завершена. Теперь запускайте продакшен: docker compose up -d --build"
