@@ -45,7 +45,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - frontend_vol:/var/www/frontend:ro
       - ./media:/var/www/media:ro
       - static_vol:/var/www/static:ro
