@@ -14,7 +14,7 @@ docker compose -f docker-compose.prod.yaml up -d --build nginx web frontend  || 
 
 # 2. Ожидание готовности Nginx
 echo "Ожидаем Nginx..."
-while ! docker compose -f docker-compose.prod.yaml exec nginx nc -z localhost 80; do
+while ! docker compose -f docker-compose.prod.yaml exec nginx curl -s http://localhost >/dev/null 2>&1; do
     sleep 1
 done
 
