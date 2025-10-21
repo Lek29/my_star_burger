@@ -15,14 +15,35 @@ echo "Временно копируем nginx.init.conf в nginx.conf..."
 cp ./nginx.init.conf ./nginx.conf
 
 # 2. Поднимаем Nginx, Web и Frontend для Certbot Challenge
-# Nginx теперь стартует без проблем, используя nginx.init.conf (который скопирован как nginx.conf)
-docker compose -f docker-compose.prod.yaml up -d --build nginx web frontend || { echo "Ошибка запуска сервисов."; exit 1; }
+# Добавлена очистка временного файла при неудачном запуске
+docker compose -f docker-compose.prod.yaml up -d --build nginx web frontend || {
+    echo "Ошибка запуска сервисов. Отменяем запуск и удаляем временный конфиг."
+    rm -f ./nginx.conf
+    exit 1
+}
 
-# 3. Ожидание готовности Nginx
+# 3. Ожидание готовности Nginx (Добавлена диагностика и таймаут)
 echo "Ожидаем Nginx..."
-# Используем безопасную команду exec
+MAX_ATTEMPTS=30
+i=0
 while ! docker compose -f docker-compose.prod.yaml exec nginx curl -s http://localhost >/dev/null 2>&1; do
     sleep 1
+    i=$((i+1))
+
+    if [ "$i" -gt "$MAX_ATTEMPTS" ]; then
+        echo "--------------------------------------------------------"
+        echo "ТАЙМАУТ: Nginx не запустился за $MAX_ATTEMPTS секунд."
+        echo "Выводим логи контейнера Nginx для диагностики причины падения:"
+        echo "--------------------------------------------------------"
+        docker compose -f docker-compose.prod.yaml logs nginx
+        echo "--------------------------------------------------------"
+        echo "Ошибка: Nginx не готов. Отмена инициализации."
+
+        # Очистка
+        docker compose -f docker-compose.prod.yaml down
+        rm -f ./nginx.conf
+        exit 1
+    fi
 done
 
 # 4. Запускаем Certbot для получения сертификата
@@ -34,7 +55,13 @@ docker compose run --rm \
   -d $DOMAIN -d www.$DOMAIN \
   --email $EMAIL \
   $STAGING \
-  --agree-tos -n || { echo "Ошибка Certbot"; docker compose -f docker-compose.prod.yaml down; rm -f ./nginx.conf; exit 1; }
+  --agree-tos -n || {
+    echo "Ошибка Certbot. Выводим логи Nginx для проверки Certbot Challenge."
+    docker compose -f docker-compose.prod.yaml logs nginx
+    docker compose -f docker-compose.prod.yaml down
+    rm -f ./nginx.conf
+    exit 1
+}
 
 
 # 5. Выключаем временные сервисы и возвращаем Prod-конфиг
