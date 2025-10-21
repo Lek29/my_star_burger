@@ -19,13 +19,15 @@ while ! docker compose -f docker-compose.prod.yaml exec nginx curl -s http://loc
 done
 
 # 3. Запускаем Certbot для получения сертификата
-docker compose run --rm certbot \
-    certonly --webroot -w /var/www/certbot \
-    -d $DOMAIN \
-    --email $EMAIL \
-    $STAGING \
-    --agree-tos \
-    -n || { echo "Ошибка Certbot. Отмена."; docker compose down; exit 1; }
+docker compose run --rm \
+  -v certbot_vol:/etc/ssl \
+  -v certbot_vol_www:/var/www/certbot \
+  certbot \
+  certonly --webroot -w /var/www/certbot \
+  -d $DOMAIN -d www.$DOMAIN \
+  --email $EMAIL \
+  $STAGING \
+  --agree-tos -n || { echo "Ошибка Certbot"; docker compose -f docker-compose.prod.yaml down; exit 1; }
 
 
 # 4. Выключаем временные сервисы
