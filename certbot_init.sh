@@ -9,16 +9,23 @@ STAGING="--staging"
 
 echo "Начало получения сертификата для $DOMAIN..."
 
-# 1. Поднимаем Nginx, Web и Frontend для Certbot Challenge
-docker compose -f docker-compose.prod.yaml up -d --build nginx web frontend  || { echo "Ошибка запуска сервисов."; exit 1; }
+# 1. *** КРИТИЧЕСКИЙ ШАГ: ПОДМЕНА КОНФИГА NGINX ***
+# Копируем временный конфиг (без SSL) на то место, которое Docker Compose ожидает найти (nginx.conf)
+echo "Временно копируем nginx.init.conf в nginx.conf..."
+cp ./nginx.init.conf ./nginx.conf
 
-# 2. Ожидание готовности Nginx
+# 2. Поднимаем Nginx, Web и Frontend для Certbot Challenge
+# Nginx теперь стартует без проблем, используя nginx.init.conf (который скопирован как nginx.conf)
+docker compose -f docker-compose.prod.yaml up -d --build nginx web frontend || { echo "Ошибка запуска сервисов."; exit 1; }
+
+# 3. Ожидание готовности Nginx
 echo "Ожидаем Nginx..."
+# Используем безопасную команду exec
 while ! docker compose -f docker-compose.prod.yaml exec nginx curl -s http://localhost >/dev/null 2>&1; do
     sleep 1
 done
 
-# 3. Запускаем Certbot для получения сертификата
+# 4. Запускаем Certbot для получения сертификата
 docker compose run --rm \
   -v certbot_vol:/etc/ssl \
   -v certbot_vol_www:/var/www/certbot \
@@ -27,11 +34,15 @@ docker compose run --rm \
   -d $DOMAIN -d www.$DOMAIN \
   --email $EMAIL \
   $STAGING \
-  --agree-tos -n || { echo "Ошибка Certbot"; docker compose -f docker-compose.prod.yaml down; exit 1; }
+  --agree-tos -n || { echo "Ошибка Certbot"; docker compose -f docker-compose.prod.yaml down; rm -f ./nginx.conf; exit 1; }
 
 
-# 4. Выключаем временные сервисы
-echo "Сертификат получен. Выключаем временные сервисы."
+# 5. Выключаем временные сервисы и возвращаем Prod-конфиг
+echo "Сертификат получен. Выключаем временные сервисы и восстанавливаем конфиг."
 docker compose -f docker-compose.prod.yaml down
 
-echo "Инициализация SSL завершена. Теперь запускайте продакшен: docker compose -f docker-compose.prod.yaml up -d --build"
+# Восстанавливаем продакшен-конфиг Nginx
+echo "Копируем nginx.prod.conf обратно в nginx.conf"
+cp ./nginx.prod.conf ./nginx.conf
+
+echo "Инициализация SSL завершена. Теперь запускайте продакшен: docker compose -f docker-compose.prod.yaml up -d"
