@@ -15,57 +15,62 @@ echo "Временно копируем nginx.init.conf в nginx.conf..."
 cp ./nginx.init.conf ./nginx.conf
 
 # 2. Поднимаем Nginx, Web и Frontend для Certbot Challenge
-# Добавлена очистка временного файла при неудачном запуске
+echo "Запускаем временные сервисы (Nginx, Web, Frontend)..."
 docker compose -f docker-compose.prod.yaml up -d --build nginx web frontend || {
-    echo "Ошибка запуска сервисов. Отменяем запуск и удаляем временный конфиг."
+    echo "Ошибка запуска сервисов. Удаляем временный конфиг и прерываем."
     rm -f ./nginx.conf
     exit 1
 }
 
-# 3. Ожидание готовности Nginx (Добавлена диагностика и таймаут)
-echo "Ожидаем Nginx..."
+# 3. Ожидание готовности Nginx (более мягкая проверка)
+echo "Ожидаем Nginx (до 30 секунд)..."
 MAX_ATTEMPTS=30
 i=0
-while ! docker compose -f docker-compose.prod.yaml exec nginx curl -s http://localhost >/dev/null 2>&1; do
+# Используем команду curl с опцией --fail, чтобы считать 301/404 ошибкой, но это не критично.
+while ! docker compose -f docker-compose.prod.yaml exec nginx curl -s http://localhost >/dev/null 2>&1 && [ "$i" -lt "$MAX_ATTEMPTS" ]; do
     sleep 1
     i=$((i+1))
-
-    if [ "$i" -gt "$MAX_ATTEMPTS" ]; then
-        echo "--------------------------------------------------------"
-        echo "ТАЙМАУТ: Nginx не запустился за $MAX_ATTEMPTS секунд."
-        echo "Выводим логи контейнера Nginx для диагностики причины падения:"
-        echo "--------------------------------------------------------"
-        docker compose -f docker-compose.prod.yaml logs nginx
-        echo "--------------------------------------------------------"
-        echo "Ошибка: Nginx не готов. Отмена инициализации."
-
-        # Очистка
-        docker compose -f docker-compose.prod.yaml down
-        rm -f ./nginx.conf
-        exit 1
-    fi
 done
 
+if [ "$i" -ge "$MAX_ATTEMPTS" ]; then
+    echo "--------------------------------------------------------"
+    echo "ТАЙМАУТ: Nginx не запустился или не отвечает на 80 порту."
+    echo "Логи Nginx:"
+    docker compose -f docker-compose.prod.yaml logs nginx
+    echo "--------------------------------------------------------"
+    docker compose -f docker-compose.prod.yaml down
+    rm -f ./nginx.conf
+    exit 1
+fi
+
+echo "Nginx готов. Запускаем Certbot..."
+
 # 4. Запускаем Certbot для получения сертификата
-docker compose run --rm \
-  -v certbot_vol:/etc/ssl \
+# ИСПРАВЛЕНИЕ: Используем стандартный путь /etc/letsencrypt для тома Certbot
+if ! docker compose run --rm \
+  -v certbot_vol:/etc/letsencrypt \
   -v certbot_vol_www:/var/www/certbot \
   certbot \
   certonly --webroot -w /var/www/certbot \
   -d $DOMAIN -d www.$DOMAIN \
   --email $EMAIL \
   $STAGING \
-  --agree-tos -n || {
-    echo "Ошибка Certbot. Выводим логи Nginx для проверки Certbot Challenge."
-    docker compose -f docker-compose.prod.yaml logs nginx
+  --agree-tos -n; then
+    echo "--------------------------------------------------------"
+    echo "⛔ КРИТИЧЕСКАЯ ОШИБКА CERTBOT ⛔"
+    echo "Certbot не смог получить сертификат. Если ошибка 'no configuration file provided: not found' сохраняется,"
+    echo "проверьте определение службы 'certbot' и корректность томов в docker-compose.prod.yaml."
+    echo "--------------------------------------------------------"
+
+    # Очистка
     docker compose -f docker-compose.prod.yaml down
     rm -f ./nginx.conf
     exit 1
-}
+fi
 
 
 # 5. Выключаем временные сервисы и возвращаем Prod-конфиг
-echo "Сертификат получен. Выключаем временные сервисы и восстанавливаем конфиг."
+echo "Сертификат получен. Выключаем временные сервисы."
 docker compose -f docker-compose.prod.yaml down
 
 # Восстанавливаем продакшен-конфиг Nginx
