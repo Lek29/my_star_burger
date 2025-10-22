@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Установите ваш реальный email и домен здесь
-EMAIL="ligioner29@mail.ru" # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИТЬ !!!
+EMAIL="your_email@example.com" # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИТЬ !!!
 DOMAIN="lek29.ru"
 DOMAIN_WWW="www.lek29.ru"
 
@@ -22,6 +22,7 @@ mkdir -p ./certbot/conf
 # 3. Запуск только Nginx в фоне с init-конфигом
 # --------------------------------------------------------
 echo "Запуск Nginx для прохождения проверки Certbot..."
+# Используем имя сервиса 'nginx'
 docker compose -f docker-compose.prod.yaml up -d nginx
 
 # --------------------------------------------------------
@@ -37,8 +38,7 @@ while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
     STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/ || true)
 
     # Nginx с init.conf возвращает 404, что является подтверждением его готовности.
-    # Код 404, 200, 503 или 502 означает, что сервер ответил. Код 000 означает 'Connection refused'.
-    if [ "$STATUS_CODE" -ge 400 ]; then
+    if [ "$STATUS_CODE" = "404" ] || [ "$STATUS_CODE" = "200" ]; then
         echo "Nginx готов. (Статус $STATUS_CODE)"
         break
     fi
@@ -51,9 +51,9 @@ done
 if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
     echo -e "\n--------------------------------------------------------"
     echo -e "⛔ КРИТИЧЕСКАЯ ОШИБКА NGINX ⛔"
-    echo -e "Nginx не ответил на порту 80 после 30 секунд. Проверьте логи Nginx (docker compose logs nginx)."
+    echo -e "Nginx не ответил на порту 80 после 30 секунд. Проверьте логи Nginx (docker compose logs nginx-1)."
     echo -e "--------------------------------------------------------"
-    docker compose -f docker-compose.prod.yaml down
+    # Оставляем контейнеры запущенными для отладки
     exit 1
 fi
 
@@ -72,9 +72,9 @@ docker compose -f docker-compose.prod.yaml run --rm certbot \
     --noninteractive || {
         echo -e "\n--------------------------------------------------------"
         echo -e "⛔ КРИТИЧЕСКАЯ ОШИБКА CERTBOT ⛔"
-        echo -e "Certbot не смог получить сертификат. Проверьте логи Nginx и настройки DNS."
+        echo -e "Certbot не смог получить сертификат. Контейнеры Nginx оставлены запущенными."
         echo -e "--------------------------------------------------------"
-        docker compose -f docker-compose.prod.yaml down
+        # Оставляем контейнеры запущенными для отладки
         exit 1
     }
 
@@ -84,11 +84,8 @@ docker compose -f docker-compose.prod.yaml run --rm certbot \
 if [ -f "./certbot/conf/live/$DOMAIN/fullchain.pem" ]; then
     echo "Сертификаты успешно получены. Переключение Nginx на продакшен-конфиг..."
 
-    # Копируем prod-конфиг на место init-конфига для Nginx
-    # ! Здесь предполагается, что вы замените init.conf на prod.conf !
+    # ... (логика переключения конфига)
 
-    # Для целей этого скрипта, мы просто перезапускаем все контейнеры
-    # Используем 'down' и 'up' для гарантии, что все сервисы стартуют с новой конфигурацией
     echo "Остановка сервисов..."
     docker compose -f docker-compose.prod.yaml down
 
@@ -99,7 +96,7 @@ if [ -f "./certbot/conf/live/$DOMAIN/fullchain.pem" ]; then
     echo -e "✅ УСПЕХ! СЕРТИФИКАТЫ ПОЛУЧЕНЫ И ВСЕ СЕРВИСЫ ЗАПУЩЕНЫ."
     echo -e "--------------------------------------------------------"
 else
-    echo "Certbot прошел, но файлы сертификатов не найдены."
+    echo "Certbot прошел, но файлы сертификатов не найдены. Остановка сервисов."
     docker compose -f docker-compose.prod.yaml down
     exit 1
 fi
