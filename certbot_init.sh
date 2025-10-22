@@ -11,12 +11,15 @@ STAGING="--staging"
 # Переходим в директорию скрипта
 cd "$(dirname "$0")"
 
+# КРИТИЧЕСКОЕ ИЗМЕНЕНИЕ: Определяем имя файла compose
+COMPOSE_FILE="docker-compose.prod.yaml"
+
 echo "Начало получения сертификата для $DOMAIN..."
 
 # 1. Поднимаем Nginx (он запустится с nginx.init.conf)
 echo "Запускаем Nginx..."
-docker compose up -d --build nginx || {
-    echo "Ошибка запуска Nginx. Проверьте docker-compose.prod.yaml."
+docker compose -f $COMPOSE_FILE up -d --build nginx || {
+    echo "Ошибка запуска Nginx. Проверьте $COMPOSE_FILE."
     exit 1
 }
 
@@ -24,7 +27,7 @@ docker compose up -d --build nginx || {
 echo "Ожидаем Nginx (до 30 секунд)..."
 MAX_ATTEMPTS=30
 i=0
-while ! docker compose exec nginx-1 curl -k -s http://localhost >/dev/null 2>&1 && [ "$i" -lt "$MAX_ATTEMPTS" ]; do
+while ! docker compose -f $COMPOSE_FILE exec nginx-1 curl -k -s http://localhost >/dev/null 2>&1 && [ "$i" -lt "$MAX_ATTEMPTS" ]; do
     sleep 1
     i=$((i+1))
 done
@@ -32,9 +35,9 @@ done
 if [ "$i" -ge "$MAX_ATTEMPTS" ]; then
     echo "--------------------------------------------------------"
     echo "ТАЙМАУТ: Nginx не запустился или не отвечает на 80 порту."
-    docker compose logs nginx
+    docker compose -f $COMPOSE_FILE logs nginx
     echo "--------------------------------------------------------"
-    docker compose down
+    docker compose -f $COMPOSE_FILE down
     exit 1
 fi
 
@@ -42,7 +45,7 @@ echo "Nginx готов. Запускаем Certbot..."
 
 # 3. Запускаем Certbot для получения сертификата
 # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Не дублируем тома через -v. Полагаемся на YAML.
-if ! docker compose run --rm certbot \
+if ! docker compose -f $COMPOSE_FILE run --rm certbot \
   certonly --webroot -w /var/www/certbot \
   -d $DOMAIN -d www.$DOMAIN \
   --email $EMAIL \
@@ -51,18 +54,18 @@ if ! docker compose run --rm certbot \
     echo "--------------------------------------------------------"
     echo "⛔ КРИТИЧЕСКАЯ ОШИБКА CERTBOT ⛔"
     echo "Certbot не смог получить сертификат. Вывод выше должен содержать подробности."
-    echo "Убедитесь, что строка 'command' в секции 'certbot' в docker-compose.prod.yaml ЗАКОММЕНТИРОВАНА!"
+    echo "Убедитесь, что строка 'command' в секции 'certbot' в $COMPOSE_FILE ЗАКОММЕНТИРОВАНА!"
     echo "--------------------------------------------------------"
 
     # Очистка
-    docker compose down
+    docker compose -f $COMPOSE_FILE down
     exit 1
 fi
 
 
 # 4. Выключаем временные сервисы
 echo "Сертификат получен. Выключаем временные сервисы."
-docker compose down
+docker compose -f $COMPOSE_FILE down
 
 # 5. Замена конфига Nginx на продакшен
 echo "Копируем nginx.prod.conf поверх nginx.init.conf (для включения SSL)."
@@ -70,4 +73,4 @@ echo "Копируем nginx.prod.conf поверх nginx.init.conf (для вк
 cp ./nginx/nginx.prod.conf ./nginx/nginx.init.conf
 
 echo "Инициализация SSL завершена. Теперь РАСКОММЕНТИРУЙТЕ строку 'command' в certbot-сервисе."
-echo "Запускайте продакшен: docker compose up -d"
+echo "Запускайте продакшен: docker compose -f $COMPOSE_FILE up -d"
