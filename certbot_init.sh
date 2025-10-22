@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Установите ваш реальный email и домен здесь
-EMAIL="your_email@example.com" # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИТЬ !!!
+EMAIL="ligioner29@mail.ru" # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИТЬ !!!
 DOMAIN="lek29.ru"
 DOMAIN_WWW="www.lek29.ru"
 
@@ -26,41 +26,33 @@ echo "Запуск Nginx для прохождения проверки Certbot.
 docker compose -f docker-compose.prod.yaml up -d nginx
 
 # --------------------------------------------------------
-# 4. Проверка готовности Nginx (Асинхронный цикл)
+# 4. Гарантированное ожидание и проверка статуса контейнера
 # --------------------------------------------------------
-echo "Проверка готовности Nginx на порту 80 (макс. 30 сек)..."
-MAX_ATTEMPTS=10
-ATTEMPTS=0
-# Цикл будет проверять ответ Nginx на хост-порту 80
-while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
-    # curl -s: тихий режим, -o /dev/null: игнорируем тело ответа, -w "%{http_code}": выводим только код.
-    # http://localhost:80/ - проверяем, что Docker пробросил порт и Nginx слушает.
-    STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/ || true)
+# Гарантированная пауза 10 секунд, чтобы Nginx успел запуститься и,
+# если упал, чтобы Docker это зафиксировал.
+echo "Пауза 10 секунд для инициализации Nginx..."
+sleep 10
 
-    # Nginx с init.conf возвращает 404, что является подтверждением его готовности.
-    if [ "$STATUS_CODE" = "404" ] || [ "$STATUS_CODE" = "200" ]; then
-        echo "Nginx готов. (Статус $STATUS_CODE)"
-        break
-    fi
+# Проверяем, что контейнер Nginx запущен и не упал сразу после старта
+NGINX_STATUS=$(docker compose -f docker-compose.prod.yaml ps -q nginx | xargs docker inspect -f '{{.State.Status}}')
 
-    ATTEMPTS=$((ATTEMPTS+1))
-    echo "Nginx не готов. Попытка $ATTEMPTS/$MAX_ATTEMPTS. (Статус $STATUS_CODE). Ожидание 3 сек..."
-    sleep 3
-done
-
-if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+if [ "$NGINX_STATUS" != "running" ]; then
     echo -e "\n--------------------------------------------------------"
     echo -e "⛔ КРИТИЧЕСКАЯ ОШИБКА NGINX ⛔"
-    echo -e "Nginx не ответил на порту 80 после 30 секунд. Проверьте логи Nginx (docker compose logs nginx-1)."
+    echo "Nginx не смог запуститься. Проверьте логи: 'docker compose logs nginx-1'"
+    echo "Ожидаемый статус 'running', текущий статус: '$NGINX_STATUS'."
     echo -e "--------------------------------------------------------"
     # Оставляем контейнеры запущенными для отладки
     exit 1
 fi
 
+echo "Nginx готов. (Статус $NGINX_STATUS)"
+
 # --------------------------------------------------------
 # 5. Запуск Certbot для получения сертификатов
 # --------------------------------------------------------
 echo "Nginx готов. Запускаем Certbot..."
+# Запускаем Certbot. В случае сбоя, оставляем контейнеры Nginx запущенными для диагностики.
 docker compose -f docker-compose.prod.yaml run --rm certbot \
     certonly --webroot \
     -w /var/www/certbot \
@@ -81,13 +73,21 @@ docker compose -f docker-compose.prod.yaml run --rm certbot \
 # --------------------------------------------------------
 # 6. Обновление конфигурации Nginx и Перезапуск
 # --------------------------------------------------------
+# Проверяем, были ли сгенерированы сертификаты
 if [ -f "./certbot/conf/live/$DOMAIN/fullchain.pem" ]; then
     echo "Сертификаты успешно получены. Переключение Nginx на продакшен-конфиг..."
 
-    # ... (логика переключения конфига)
+    # ПЕРЕКЛЮЧЕНИЕ КОНФИГА NGINX (Заменяем init на prod)
+    # Сначала останавливаем Nginx, чтобы изменить монтирование.
+    docker compose -f docker-compose.prod.yaml stop nginx
 
-    echo "Остановка сервисов..."
-    docker compose -f docker-compose.prod.yaml down
+    # Удаляем init-конфиг (НЕ ТРОГАЙТЕ ОСТАЛЬНЫЕ ТОМА!)
+    docker compose -f docker-compose.prod.yaml rm -f nginx
+
+    # Теперь запускаем ВСЕ сервисы в режиме production, используя prod.conf
+    # (Вам нужно убедиться, что в docker-compose.prod.yaml в секции nginx:volumes
+    # есть условие для продакшен-конфига. Этот скрипт не меняет compose-файл,
+    # он просто удаляет контейнер, чтобы следующий 'up' использовал новое состояние.)
 
     echo "Запуск продакшен-среды с новым сертификатом..."
     docker compose -f docker-compose.prod.yaml up -d --build
