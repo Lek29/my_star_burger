@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Установите ваш реальный email и домен здесь
-EMAIL="ligioner29@mail.ru" # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИТЬ !!!
+EMAIL="your_email@example.com" # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИТЬ !!!
 DOMAIN="lek29.ru"
 DOMAIN_WWW="www.lek29.ru"
 
@@ -25,11 +25,37 @@ echo "Запуск Nginx для прохождения проверки Certbot.
 docker compose -f docker-compose.prod.yaml up -d nginx
 
 # --------------------------------------------------------
-# 4. Гарантированная пауза
+# 4. Проверка готовности Nginx (Асинхронный цикл)
 # --------------------------------------------------------
-# Даем Nginx время на полную инициализацию порта 80
-echo "Пауза 5 секунд для полной инициализации Nginx..."
-sleep 5
+echo "Проверка готовности Nginx на порту 80 (макс. 30 сек)..."
+MAX_ATTEMPTS=10
+ATTEMPTS=0
+# Цикл будет проверять ответ Nginx на хост-порту 80
+while [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+    # curl -s: тихий режим, -o /dev/null: игнорируем тело ответа, -w "%{http_code}": выводим только код.
+    # http://localhost:80/ - проверяем, что Docker пробросил порт и Nginx слушает.
+    STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80/ || true)
+
+    # Nginx с init.conf возвращает 404, что является подтверждением его готовности.
+    # Код 404, 200, 503 или 502 означает, что сервер ответил. Код 000 означает 'Connection refused'.
+    if [ "$STATUS_CODE" -ge 400 ]; then
+        echo "Nginx готов. (Статус $STATUS_CODE)"
+        break
+    fi
+
+    ATTEMPTS=$((ATTEMPTS+1))
+    echo "Nginx не готов. Попытка $ATTEMPTS/$MAX_ATTEMPTS. (Статус $STATUS_CODE). Ожидание 3 сек..."
+    sleep 3
+done
+
+if [ $ATTEMPTS -eq $MAX_ATTEMPTS ]; then
+    echo -e "\n--------------------------------------------------------"
+    echo -e "⛔ КРИТИЧЕСКАЯ ОШИБКА NGINX ⛔"
+    echo -e "Nginx не ответил на порту 80 после 30 секунд. Проверьте логи Nginx (docker compose logs nginx)."
+    echo -e "--------------------------------------------------------"
+    docker compose -f docker-compose.prod.yaml down
+    exit 1
+fi
 
 # --------------------------------------------------------
 # 5. Запуск Certbot для получения сертификатов
