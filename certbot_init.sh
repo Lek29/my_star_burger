@@ -24,11 +24,18 @@ docker compose -f $COMPOSE_FILE up -d --build nginx || {
     exit 1
 }
 
-# 2. Проверяем синтаксис Nginx внутри контейнера (более надежный способ диагностики)
-echo "Проверяем синтаксис конфигурации Nginx..."
-if ! docker compose -f $COMPOSE_FILE exec nginx-1 nginx -t 2>&1; then
+# 2. Проверяем, не упал ли Nginx сразу после запуска (Самый частый сценарий крэша)
+echo "Проверяем статус Nginx..."
+sleep 1 # Даем 1 секунду на завершение старта/крэша
+CONTAINER_STATUS=$(docker compose -f $COMPOSE_FILE ps -q nginx-1)
+
+# Проверяем, запущен ли контейнер (должен быть не пустой вывод)
+if [ -z "$CONTAINER_STATUS" ]; then
     echo "--------------------------------------------------------"
-    echo "⛔ ОШИБКА: Конфигурация Nginx не прошла проверку синтаксиса."
+    echo "⛔ КРИТИЧЕСКАЯ ОШИБКА: Контейнер Nginx упал при старте."
+    echo "Выводим логи для диагностики:"
+    echo "--------------------------------------------------------"
+    docker compose -f $COMPOSE_FILE logs nginx-1
     echo "--------------------------------------------------------"
     docker compose -f $COMPOSE_FILE down
     exit 1
@@ -38,7 +45,7 @@ fi
 echo "Ожидаем HTTP-ответ от Nginx (до 30 секунд)..."
 MAX_ATTEMPTS=30
 i=0
-# Усиление проверки: используем 127.0.0.1 вместо localhost
+# Используем 127.0.0.1 для более надежной проверки
 while ! docker compose -f $COMPOSE_FILE exec nginx-1 curl -k -s http://127.0.0.1:80 >/dev/null 2>&1 && [ "$i" -lt "$MAX_ATTEMPTS" ]; do
     sleep 1
     i=$((i+1))
