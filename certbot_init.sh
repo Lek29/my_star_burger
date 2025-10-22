@@ -3,7 +3,7 @@ set -euo pipefail
 
 # --- Настройки ---
 DOMAIN="lek29.ru"
-EMAIL="your_email@example.com" # Укажите ваш реальный email
+EMAIL="ligioner29@mail.ru" # Укажите ваш реальный email
 # Для тестирования используйте --staging. Для продакшена установите STAGING=""
 STAGING="--staging"
 # STAGING="" # <-- Используйте эту строку, когда будете готовы к продакшену
