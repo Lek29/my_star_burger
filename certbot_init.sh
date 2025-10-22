@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Установите ваш реальный email и домен здесь
-EMAIL="your_email@example.com" # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИТЬ !!!
+EMAIL="ligioner29@mail.ru" # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИТЬ !!!
 DOMAIN="lek29.ru"
 DOMAIN_WWW="www.lek29.ru"
 
