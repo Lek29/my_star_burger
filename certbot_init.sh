@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Установите ваш реальный email и домен здесь
-EMAIL="ligioner29@mail.ru" # !!! ОБЯЗАТЕЛЬНО ЗАМЕНИТЬ !!!
+EMAIL="ligioner29@mail.ru"
 DOMAIN="lek29.ru"
 DOMAIN_WWW="www.lek29.ru"
 
@@ -9,7 +9,8 @@ DOMAIN_WWW="www.lek29.ru"
 # 1. Очистка и остановка всех старых контейнеров
 # --------------------------------------------------------
 echo "Остановка и удаление предыдущих контейнеров и сетей..."
-docker compose -f docker-compose.prod.yaml down --volumes --remove-orphans
+# Убедитесь, что здесь используется только один compose-файл:
+docker compose -f docker-compose.yaml down --volumes --remove-orphans
 
 # --------------------------------------------------------
 # 2. Проверка существования каталогов Certbot
@@ -22,27 +23,25 @@ mkdir -p ./certbot/conf
 # 3. Запуск только Nginx в фоне с init-конфигом
 # --------------------------------------------------------
 echo "Запуск Nginx для прохождения проверки Certbot..."
-# Используем имя сервиса 'nginx'
-docker compose -f docker-compose.prod.yaml up -d nginx
+# Используем docker-compose.yaml (ваш главный файл)
+# Предполагаем, что в нем Nginx настроен на прослушивание 80 порта
+# и использует `nginx.conf` с location /.well-known/...
+docker compose -f docker-compose.yaml up -d nginx
 
 # --------------------------------------------------------
 # 4. Гарантированное ожидание и проверка статуса контейнера
 # --------------------------------------------------------
-# Гарантированная пауза 10 секунд, чтобы Nginx успел запуститься и,
-# если упал, чтобы Docker это зафиксировал.
 echo "Пауза 10 секунд для инициализации Nginx..."
 sleep 10
 
-# Проверяем, что контейнер Nginx запущен и не упал сразу после старта
-NGINX_STATUS=$(docker compose -f docker-compose.prod.yaml ps -q nginx | xargs docker inspect -f '{{.State.Status}}')
+NGINX_STATUS=$(docker compose -f docker-compose.yaml ps -q nginx | xargs docker inspect -f '{{.State.Status}}')
 
 if [ "$NGINX_STATUS" != "running" ]; then
     echo -e "\n--------------------------------------------------------"
     echo -e "⛔ КРИТИЧЕСКАЯ ОШИБКА NGINX ⛔"
-    echo "Nginx не смог запуститься. Проверьте логи: 'docker compose logs nginx-1'"
+    echo "Nginx не смог запуститься. Проверьте логи: 'docker compose logs nginx'"
     echo "Ожидаемый статус 'running', текущий статус: '$NGINX_STATUS'."
     echo -e "--------------------------------------------------------"
-    # Оставляем контейнеры запущенными для отладки
     exit 1
 fi
 
@@ -52,8 +51,8 @@ echo "Nginx готов. (Статус $NGINX_STATUS)"
 # 5. Запуск Certbot для получения сертификатов
 # --------------------------------------------------------
 echo "Nginx готов. Запускаем Certbot..."
-# Запускаем Certbot. В случае сбоя, оставляем контейнеры Nginx запущенными для диагностики.
-docker compose -f docker-compose.prod.yaml run --rm certbot \
+# Используем --force-renewal, чтобы обновить тестовый сертификат на боевой
+docker compose -f docker-compose.yaml run --rm certbot \
     certonly --webroot \
     -w /var/www/certbot \
     --force-renewal \
@@ -66,37 +65,40 @@ docker compose -f docker-compose.prod.yaml run --rm certbot \
         echo -e "⛔ КРИТИЧЕСКАЯ ОШИБКА CERTBOT ⛔"
         echo -e "Certbot не смог получить сертификат. Контейнеры Nginx оставлены запущенными."
         echo -e "--------------------------------------------------------"
-        # Оставляем контейнеры запущенными для отладки
         exit 1
     }
 
 # --------------------------------------------------------
-# 6. Обновление конфигурации Nginx и Перезапуск
+# 6. Финальный запуск продакшен-среды с новым сертификатом
 # --------------------------------------------------------
-# Проверяем, были ли сгенерированы сертификаты
+
+# ВАЖНО: Мы переключаемся с init-конфига Nginx на продакшен-конфиг.
+# Для этого мы должны изменить монтирование конфига Nginx в docker-compose.yaml
+# (Это исправление было сделано ранее в другом файле, поэтому здесь мы просто запускаем)
+
 if [ -f "./certbot/conf/live/$DOMAIN/fullchain.pem" ]; then
-    echo "Сертификаты успешно получены. Переключение Nginx на продакшен-конфиг..."
+    echo "Сертификаты успешно получены. Остановка init-контейнеров..."
 
-    # ПЕРЕКЛЮЧЕНИЕ КОНФИГА NGINX (Заменяем init на prod)
-    # Сначала останавливаем Nginx, чтобы изменить монтирование.
-    docker compose -f docker-compose.prod.yaml stop nginx
+    # ОСТАНОВКА ТОЛЬКО NGINX
+    docker compose -f docker-compose.yaml stop nginx
+    docker compose -f docker-compose.yaml rm -f nginx
 
-    # Удаляем init-конфиг (НЕ ТРОГАЙТЕ ОСТАЛЬНЫЕ ТОМА!)
-    docker compose -f docker-compose.prod.yaml rm -f nginx
+    echo "Запуск ВСЕЙ продакшен-среды с новым сертификатом..."
 
-    # Теперь запускаем ВСЕ сервисы в режиме production, используя prod.conf
-    # (Вам нужно убедиться, что в docker-compose.prod.yaml в секции nginx:volumes
-    # есть условие для продакшен-конфига. Этот скрипт не меняет compose-файл,
-    # он просто удаляет контейнер, чтобы следующий 'up' использовал новое состояние.)
-
-    echo "Запуск продакшен-среды с новым сертификатом..."
-    docker compose -f docker-compose.prod.yaml up -d --build
+    # Теперь запускаем ВСЕ сервисы. (Предполагается, что в docker-compose.yaml
+    # Nginx использует правильный prod-конфиг и монтирует сертификаты.)
+    docker compose -f docker-compose.yaml up -d --build
 
     echo -e "\n--------------------------------------------------------"
     echo -e "✅ УСПЕХ! СЕРТИФИКАТЫ ПОЛУЧЕНЫ И ВСЕ СЕРВИСЫ ЗАПУЩЕНЫ."
+    echo "Ваш сайт должен быть доступен по адресу https://$DOMAIN"
     echo -e "--------------------------------------------------------"
 else
-    echo "Certbot прошел, но файлы сертификатов не найдены. Остановка сервисов."
-    docker compose -f docker-compose.prod.yaml down
+    # ЭТОТ БЛОК ТЕПЕРЬ ПОЧТИ НЕВОЗМОЖЕН БЛАГОДАРЯ --force-renewal
+    echo -e "\n--------------------------------------------------------"
+    echo "Certbot прошел (exit 0), но файлы сертификатов не найдены. Это аномалия."
+    echo "Проверьте логи Certbot и Nginx. Остановка всех сервисов."
+    echo -e "--------------------------------------------------------"
+    docker compose -f docker-compose.yaml down
     exit 1
 fi

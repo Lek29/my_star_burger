@@ -1,3 +1,20 @@
+version: '3.8'
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  db_data:
+  frontend_dist_vol:
+    driver: local
+  static_files_vol:
+    driver: local
+  certbot_conf_vol:
+    driver: local
+  certbot_www_vol:
+    driver: local
+
 services:
   db:
     image: postgres:15
@@ -14,79 +31,81 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks: [app-net]
 
-  web:
-    build: ./backend
-    command: gunicorn star_burger.wsgi:application --bind 0.0.0.0:8000
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: backend
+    command: gunicorn star_burger.wsgi:application --bind 0.0.0.0:8000 --workers 3
     environment:
       - PYTHONPATH=/app
     volumes:
-      - static_vol:/app/staticfiles
+      - static_files_vol:/app/staticfiles
       - ./media:/app/media
-      - frontend_vol:/app/bundles
-    ports:
-      - "8000:8000"
+      - frontend_dist_vol:/app/bundles
     env_file:
       - .env
     depends_on:
       db:
         condition: service_healthy
       frontend:
-        condition: service_started
-    restart:
-      always
-
-  nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    container_name: nginx-1
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.certbot.conf:/etc/nginx/nginx.conf
-      - frontend_vol:/var/www/frontend:ro
-      - ./media:/var/www/media:ro
-      - static_vol:/var/www/static:ro
-      - certbot_vol:/etc/letsencrypt
-      - certbot_vol_www:/var/www/certbot
-    depends_on:
-      - web
-    restart:
-      always
+        condition: service_completed_successfully
+    restart: always
+    networks: [app-net]
 
   frontend:
     build:
       context: ./frontend
-    working_dir: /app
+    container_name: frontend
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - frontend_vol:/app/bundles
+      - frontend_dist_vol:/app/dist
+      - ./frontend/bundles-src:/app/bundles-src:ro
+      - ./frontend/package.json:/app/package.json:ro
+      - ./frontend/package-lock.json:/app/package-lock.json:ro
     command: ["npm", "run", "build"]
+    networks: [app-net]
+    restart: "no"
+
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - certbot_conf_vol:/etc/letsencrypt:ro
+      - certbot_www_vol:/var/www/certbot:ro
+      - frontend_dist_vol:/var/www/bundles:ro
+      - static_files_vol:/var/www/static:ro
+      - ./media:/var/www/media:ro
+    depends_on:
+      - backend
+    restart: always
+    networks: [app-net]
+
+
+  nginx-init:
+    image: nginx:latest
+    container_name: nginx-init
+    volumes:
+      - ./nginx/nginx.init.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_www_vol:/var/www/certbot:rw
+    ports:
+      - "80:80"
+    restart: "no"
+    networks: [app-net]
 
   certbot:
     image: certbot/certbot
-    container_name: certbot-1
+    container_name: certbot
     volumes:
-      - certbot_vol:/etc/letsencrypt
-      - certbot_vol_www:/var/www/certbot
-    command: /bin/sh -c 'trap exit TERM; while :; do sleep 12h & wait $!; certbot renew --webroot -w /var/www/certbot --post-hook "docker kill -s HUP nginx-1" || true; done;'
-
+      - certbot_conf_vol:/etc/letsencrypt
+      - certbot_www_vol:/var/www/certbot
+    command: /bin/sh -c 'trap exit TERM; while :; do sleep 12h & wait $!; certbot renew --webroot -w /var/www/certbot --post-hook "docker kill -s HUP nginx" || true; done;'
     depends_on:
       - nginx
     restart: unless-stopped
-
-volumes:
-  db_data:
-  frontend_vol:
-    driver: local
-  static_vol:
-    driver: local
-  certbot_vol:
-    driver: local
-  certbot_vol_www:
-    driver: local
-
-
+    networks: [app-net]
