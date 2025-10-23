@@ -1,104 +1,70 @@
 #!/bin/bash
+set -euo pipefail # Строгий режим: завершение при любой ошибке
 
-# Установите ваш реальный email и домен здесь
-EMAIL="ligioner29@mail.ru"
+# --- НАСТРОЙКИ ---
+EMAIL="ligioner29@mail.ru" # Ваш email для Certbot
 DOMAIN="lek29.ru"
-DOMAIN_WWW="www.lek29.ru"
+DOCKER_COMPOSE_FILE="docker-compose.prod.yaml" # Используем prod-файл
+INIT_NGINX_CONF="docker/nginx.init.conf"
+PROD_NGINX_CONF="docker/nginx.prod.conf"
 
 # --------------------------------------------------------
-# 1. Очистка и остановка всех старых контейнеров
+# 0. Подготовка
 # --------------------------------------------------------
-echo "Остановка и удаление предыдущих контейнеров и сетей..."
-# Убедитесь, что здесь используется только один compose-файл:
-docker compose -f docker-compose.yaml down --volumes --remove-orphans
+echo "--- 0. Подготовка Certbot ---"
 
-# --------------------------------------------------------
-# 2. Проверка существования каталогов Certbot
-# --------------------------------------------------------
-# Certbot и Nginx должны монтировать эти папки
-mkdir -p ./certbot/www
-mkdir -p ./certbot/conf
-
-# --------------------------------------------------------
-# 3. Запуск только Nginx в фоне с init-конфигом
-# --------------------------------------------------------
-echo "Запуск Nginx для прохождения проверки Certbot..."
-# Используем docker-compose.yaml (ваш главный файл)
-# Предполагаем, что в нем Nginx настроен на прослушивание 80 порта
-# и использует `nginx.conf` с location /.well-known/...
-docker compose -f docker-compose.yaml up -d nginx
-
-# --------------------------------------------------------
-# 4. Гарантированное ожидание и проверка статуса контейнера
-# --------------------------------------------------------
-echo "Пауза 10 секунд для инициализации Nginx..."
-sleep 10
-
-NGINX_STATUS=$(docker compose -f docker-compose.yaml ps -q nginx | xargs docker inspect -f '{{.State.Status}}')
-
-if [ "$NGINX_STATUS" != "running" ]; then
-    echo -e "\n--------------------------------------------------------"
-    echo -e "⛔ КРИТИЧЕСКАЯ ОШИБКА NGINX ⛔"
-    echo "Nginx не смог запуститься. Проверьте логи: 'docker compose logs nginx'"
-    echo "Ожидаемый статус 'running', текущий статус: '$NGINX_STATUS'."
-    echo -e "--------------------------------------------------------"
+# Убедитесь, что временный nginx.init.conf существует
+if [ ! -f "$INIT_NGINX_CONF" ]; then
+    echo "⛔ ОШИБКА: Файл $INIT_NGINX_CONF не найден. Создайте его."
     exit 1
 fi
 
-echo "Nginx готов. (Статус $NGINX_STATUS)"
+# Убедитесь, что финальный nginx.prod.conf существует
+if [ ! -f "$PROD_NGINX_CONF" ]; then
+    echo "⛔ ОШИБКА: Файл $PROD_NGINX_CONF не найден. Создайте его."
+    exit 1
+fi
 
 # --------------------------------------------------------
-# 5. Запуск Certbot для получения сертификатов
+# 1. Запуск временного Nginx и Certbot
 # --------------------------------------------------------
-echo "Nginx готов. Запускаем Certbot..."
-# Используем --force-renewal, чтобы обновить тестовый сертификат на боевой
-docker compose -f docker-compose.yaml run --rm certbot \
-    certonly --webroot \
-    -w /var/www/certbot \
-    --force-renewal \
+echo "--- 1. Запуск временной конфигурации Nginx (только порт 80)... ---"
+
+# Запускаем Nginx (используя nginx.init.conf) и сервис web
+# Предполагается, что вы заменили в docker-compose.prod.yaml монтирование Nginx
+# на временный конфиг: ./docker/nginx.init.conf:/etc/nginx/nginx.conf
+docker compose -f "$DOCKER_COMPOSE_FILE" up -d nginx web
+
+# --------------------------------------------------------
+# 2. Получение сертификата
+# --------------------------------------------------------
+echo "--- 2. Запуск Certbot для получения сертификата... ---"
+
+# certonly: только получить сертификат, не устанавливать
+# --webroot -w /var/www/certbot: использовать webroot-метод
+docker compose -f "$DOCKER_COMPOSE_FILE" run --rm certbot \
+    certonly --webroot -w /var/www/certbot \
     --email "$EMAIL" \
-    -d "$DOMAIN" -d "$DOMAIN_WWW" \
+    -d "$DOMAIN" -d "www.$DOMAIN" \
     --rsa-key-size 4096 \
     --agree-tos \
     --noninteractive || {
         echo -e "\n--------------------------------------------------------"
         echo -e "⛔ КРИТИЧЕСКАЯ ОШИБКА CERTBOT ⛔"
-        echo -e "Certbot не смог получить сертификат. Контейнеры Nginx оставлены запущенными."
-        echo -e "--------------------------------------------------------"
+        echo -e "Проверьте DNS (A и CNAME записи) и файрволл (открыт ли порт 80)."
+        docker compose -f "$DOCKER_COMPOSE_FILE" down
         exit 1
     }
 
 # --------------------------------------------------------
-# 6. Финальный запуск продакшен-среды с новым сертификатом
+# 3. Переключение на Production-конфиг
 # --------------------------------------------------------
+echo "--- 3. Переключение Nginx на Production-конфигурацию (HTTPS)... ---"
 
-# ВАЖНО: Мы переключаемся с init-конфига Nginx на продакшен-конфиг.
-# Для этого мы должны изменить монтирование конфига Nginx в docker-compose.yaml
-# (Это исправление было сделано ранее в другом файле, поэтому здесь мы просто запускаем)
+# Остановка временных контейнеров
+docker compose -f "$DOCKER_COMPOSE_FILE" down
 
-if [ -f "./certbot/conf/live/$DOMAIN/fullchain.pem" ]; then
-    echo "Сертификаты успешно получены. Остановка init-контейнеров..."
-
-    # ОСТАНОВКА ТОЛЬКО NGINX
-    docker compose -f docker-compose.yaml stop nginx
-    docker compose -f docker-compose.yaml rm -f nginx
-
-    echo "Запуск ВСЕЙ продакшен-среды с новым сертификатом..."
-
-    # Теперь запускаем ВСЕ сервисы. (Предполагается, что в docker-compose.yaml
-    # Nginx использует правильный prod-конфиг и монтирует сертификаты.)
-    docker compose -f docker-compose.yaml up -d --build
-
-    echo -e "\n--------------------------------------------------------"
-    echo -e "✅ УСПЕХ! СЕРТИФИКАТЫ ПОЛУЧЕНЫ И ВСЕ СЕРВИСЫ ЗАПУЩЕНЫ."
-    echo "Ваш сайт должен быть доступен по адресу https://$DOMAIN"
-    echo -e "--------------------------------------------------------"
-else
-    # ЭТОТ БЛОК ТЕПЕРЬ ПОЧТИ НЕВОЗМОЖЕН БЛАГОДАРЯ --force-renewal
-    echo -e "\n--------------------------------------------------------"
-    echo "Certbot прошел (exit 0), но файлы сертификатов не найдены. Это аномалия."
-    echo "Проверьте логи Certbot и Nginx. Остановка всех сервисов."
-    echo -e "--------------------------------------------------------"
-    docker compose -f docker-compose.yaml down
-    exit 1
-fi
+echo -e "\n--------------------------------------------------------"
+echo -e "✅ Инициализация Certbot завершена."
+echo -e "Следующий шаг: запустить 'docker compose -f $DOCKER_COMPOSE_FILE up -d' для продакшена."
+echo -e "--------------------------------------------------------"
