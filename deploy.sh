@@ -78,6 +78,10 @@ fi
 # --------------------------------------------------------
 # 3. Запуск Продакшен-среды
 # --------------------------------------------------------
+echo "   > Убеждаемся, что nginx не занят внутри Docker..."
+sudo docker kill $(sudo docker ps -q --filter "name=nginx") 2>/dev/null || true
+sleep 2
+
 echo "--- 3. Запуск всех продакшен-сервисов (db, web, nginx, certbot)... ---"
 compose up -d --remove-orphans
 
