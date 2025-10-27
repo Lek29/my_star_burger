@@ -10,9 +10,9 @@ DOCKER_COMPOSE_FILE="docker-compose.prod.yaml"
 # Функция для вызова Docker Compose с правильным синтаксисом
 # Она гарантирует использование sudo, правильный порядок флага -f и пересылку всех аргументов.
 compose() {
-    # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Замена 'docker compose' на 'docker-compose'
-    # для совместимости с системами, где плагин V2 неправильно интерпретирует аргументы.
-    sudo docker-compose -f "$DOCKER_COMPOSE_FILE" "$@"
+    # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: ВОЗВРАТ К СОВРЕМЕННОЙ КОМАНДЕ 'docker compose' (V2).
+    # Команда V1 ('docker-compose') не найдена.
+    sudo docker compose -f "$DOCKER_COMPOSE_FILE" "$@"
 }
 
 # --------------------------------------------------------
