@@ -40,6 +40,8 @@ compose build
 if [ ! -f "./certbot/conf/live/$DOMAIN/fullchain.pem" ]; then
     echo "--- 2. СЕРТИФИКАТЫ НЕ НАЙДЕНЫ. Запуск инициализации Certbot... ---"
 
+    echo "   > Гарантированно убиваем всё, что могло занять порт 80 внутри Docker..."
+    sudo docker kill $(sudo docker ps -q --filter "publish=80") 2>/dev/null || true
     # a. Запускаем временный Nginx для проверки (используя сервис nginx-init)
     echo "   > Поднимаем nginx-init на порту 80..."
     compose up -d nginx-init
