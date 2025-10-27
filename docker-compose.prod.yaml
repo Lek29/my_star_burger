@@ -54,7 +54,7 @@ services:
 
     # КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Проверка работоспособности Gunicorn/Django
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8000/ || exit 1"]
+      test: ["CMD-SHELL", "curl --fail --silent -L http://localhost:8000/admin/ || exit 1"]
       start_period: 30s
       interval: 15s
       timeout: 5s
