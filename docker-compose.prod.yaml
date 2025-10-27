@@ -52,6 +52,14 @@ services:
     restart: always
     networks: [app-net]
 
+    # КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Проверка работоспособности Gunicorn/Django
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8000/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+
   frontend:
     build:
       context: ./frontend
@@ -66,17 +74,12 @@ services:
     restart: "no"
 
   nginx:
-    # Используем только один контейнер Nginx для всего процесса
     build: ./nginx
     container_name: nginx
-    # Он слушает 80 и 443. Сейчас 443 будет использовать заглушку.
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      # На этом этапе Nginx использует заглушечные сертификаты,
-      # сгенерированные в Dockerfile, и HTTP-конфиг,
-      # который находится в его образе.
       - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot_conf_vol:/etc/letsencrypt
       - certbot_www_vol:/var/www/certbot
