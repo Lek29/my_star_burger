@@ -19,7 +19,8 @@ echo "3. Сборка образов"
 compose build
 
 echo "4. Сборка фронтенда (Parcel)"
-compose run --rm frontend npx parcel build bundles-src/index.js --public-url /bundles/ --dist-dir dist --no-source-maps
+compose run --rm frontend npx parcel build bundles-src/index.js --public-url /static/ --dist-dir /app/dist --no-source-maps
+
 
 echo "5. Запуск БД и backend (без nginx)"
 compose up -d db backend

@@ -41,7 +41,6 @@ services:
     volumes:
       - static_files_vol:/app/staticfiles
       - ./media:/app/media
-      - frontend_dist_vol:/app/bundles
     env_file:
       - .env
     depends_on:
@@ -51,8 +50,6 @@ services:
         condition: service_completed_successfully
     restart: always
     networks: [app-net]
-
-    # КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Проверка работоспособности Gunicorn/Django
     healthcheck:
       test: ["CMD-SHELL", "curl --fail --silent -L http://localhost:8000/admin/ || exit 1"]
       start_period: 30s
