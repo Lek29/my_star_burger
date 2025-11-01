@@ -43,7 +43,7 @@ services:
     volumes:
       - static_files_vol:/app/staticfiles
       - ./media:/app/media
-      - frontend_dist_vol:/bundles
+      - frontend_dist_vol:/app/bundles
     env_file:
       - .env
     depends_on:
