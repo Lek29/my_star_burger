@@ -139,7 +139,6 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 STATICFILES_DIRS = [
     os.path.join(os.path.dirname(BASE_DIR), 'bundles'),
-    os.path.join(os.path.dirname(BASE_DIR), 'assets', 'static'),
 ]
 
 REST_FRAMEWORK = {

@@ -8,7 +8,7 @@ compose() {
     sudo docker compose --file "$DOCKER_COMPOSE_FILE" "$@"
 }
 
-echo "1. Останавливаем системный nginx и чистим Docker"
+echo "1. Очистка"
 sudo systemctl stop nginx || true
 compose down --volumes --remove-orphans || true
 
@@ -18,28 +18,26 @@ git pull
 echo "3. Сборка образов"
 compose build
 
-echo "4. Сборка фронтенда (Parcel) — вручную"
+echo "4. Сборка фронтенда"
 compose run --rm backend \
     npx parcel build bundles-src/index.js \
-      --dist-dir bundles \
+      --dist-dir /app/bundles \
       --public-url /static/ \
       --no-source-maps
 
 echo "5. Запуск БД и backend"
 compose up -d db backend
 
-echo "6. Ожидание готовности backend"
-until compose exec -T backend python manage.py check --deploy 2>/dev/null; do
-  echo "Ждём backend..."
-  sleep 5
+echo "6. Ожидание"
+until compose exec -T backend python manage.py check --deploy; do
+    sleep 5
 done
 
-echo "7. Применяем миграции и collectstatic"
+echo "7. Миграции + collectstatic"
 compose exec -T backend python manage.py migrate --noinput
 compose exec -T backend python manage.py collectstatic --noinput --clear
 
 echo "8. Запуск nginx"
 compose up -d nginx
 
-echo "✅ Готово: http://$DOMAIN"
-echo "Проверка статики: curl -I http://$DOMAIN/static/"
+echo "ГОТОВО: http://$DOMAIN"
