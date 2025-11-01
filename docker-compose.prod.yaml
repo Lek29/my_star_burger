@@ -8,7 +8,6 @@ volumes:
     driver: local
   static_files_vol:
     driver: local
-  # Эти тома нужны, но пока не используются в сервисах, только для nginx:
   certbot_conf_vol:
   certbot_www_vol:
 
@@ -35,41 +34,29 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: backend
-    command: gunicorn star_burger.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn star_burger.wsgi:application --bind 0.0.0.0:8000 --workers 3"
     environment:
       - PYTHONPATH=/app
     volumes:
       - static_files_vol:/app/staticfiles
       - ./media:/app/media
+      - frontend_dist_vol:/bundles
     env_file:
       - .env
     depends_on:
       db:
         condition: service_healthy
-      frontend:
-        condition: service_completed_successfully
     restart: always
     networks: [app-net]
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent -L http://localhost:8000/admin/ || exit 1"]
-      start_period: 30s
-      interval: 15s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin/login/"]
+      interval: 10s
       timeout: 5s
-      retries: 15
-
-
-  frontend:
-    build:
-      context: ./frontend
-    container_name: frontend
-    volumes:
-      - frontend_dist_vol:/app/dist
-      - ./frontend/bundles-src:/app/bundles-src:ro
-      - ./frontend/package.json:/app/package.json:ro
-      - ./frontend/package-lock.json:/app/package-lock.json:ro
-    command: ["npm", "run", "build"]
-    networks: [app-net]
-    restart: "no"
+      retries: 10
+      start_period: 30s
 
   nginx:
     build: ./nginx
@@ -81,10 +68,10 @@ services:
       - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot_conf_vol:/etc/letsencrypt
       - certbot_www_vol:/var/www/certbot
-      - frontend_dist_vol:/var/www/bundles:ro
       - static_files_vol:/var/www/static:ro
       - ./media:/var/www/media:ro
     depends_on:
       - backend
     restart: always
     networks: [app-net]
+
