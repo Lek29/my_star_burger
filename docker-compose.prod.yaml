@@ -75,3 +75,21 @@ services:
     restart: always
     networks: [app-net]
 
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    volumes:
+      - certbot_conf_vol:/etc/letsencrypt
+      - certbot_www_vol:/var/www/certbot
+    entrypoint: >
+      /bin/sh -c "
+      trap exit TERM;
+      while :; do
+        certbot renew --quiet;
+        echo 'Проверка обновления сертификата: $(date)';
+        sleep 12h & wait $${!};
+      done;
+      "
+    restart: unless-stopped
+    depends_on:
+      - nginx
