@@ -38,8 +38,22 @@ echo "7. Миграции + collectstatic"
 compose exec -T backend python manage.py migrate --noinput
 compose exec -T backend python manage.py collectstatic --noinput --clear
 
-echo "8. Запуск nginx"
-compose up -d nginx
+echo "8. Запуск nginx через docker run (постоянно)"
+docker stop nginx 2>/dev/null || true
+docker rm nginx 2>/dev/null || true
+
+docker run -d \
+  --name nginx \
+  --network starburger_app-net \
+  -p 0.0.0.0:80:80 \
+  -p 0.0.0.0:443:443 \
+  -v $(pwd)/nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro \
+  -v certbot_conf_vol:/etc/letsencrypt \
+  -v certbot_www_vol:/var/www/certbot \
+  -v static_files_vol:/var/www/static:ro \
+  -v $(pwd)/media:/var/www/media:ro \
+  --restart unless-stopped \
+  starburger-nginx:latest
 
 echo "ГОТОВО: http://$DOMAIN"
 echo "Проверьте: curl -I http://$DOMAIN/static/index.js"
