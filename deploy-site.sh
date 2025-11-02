@@ -13,7 +13,6 @@ echo "3. Сборка"
 docker compose -f docker-compose.prod.yaml build
 
 echo "4. Фронтенд"
-docker compose -f docker-compose.prod.yaml build backend
 docker compose -f docker-compose.prod.yaml run --rm backend \
     npx parcel build bundles-src/index.js --dist-dir /app/bundles --public-url /static/
 
@@ -21,9 +20,8 @@ echo "5. Запуск БД и backend"
 docker compose -f docker-compose.prod.yaml up -d db backend
 
 echo "6. Миграции + collectstatic"
-until docker compose -f docker-compose.prod.yaml exec -T backend python manage.py check; do sleep 5; done
-docker compose -f docker-compose.prod.yaml exec -T backend python manage.py migrate --noinput
-docker compose -f docker-compose.prod.yaml exec -T backend python manage.py collectstatic --noinput --clear
+docker compose -f docker-compose.prod.yaml run --rm backend \
+    python manage.py collectstatic --noinput
 
 echo "7. Запуск nginx на HTTP"
 docker stop nginx || true

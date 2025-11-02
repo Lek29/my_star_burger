@@ -21,26 +21,18 @@ echo "Сертификат получен!"
 docker stop nginx || true
 docker rm nginx || true
 
-#docker run -d \
-#  --name nginx \
-#  --network starburger_app-net \
-#  -p 0.0.0.0:80:80 \
-#  -p 0.0.0.0:443:443 \
-#  -v $(pwd)/nginx/https.conf:/etc/nginx/conf.d/default.conf:ro \
-#  -v certbot_conf_vol:/etc/letsencrypt \
-#  -v certbot_www_vol:/var/www/certbot \
-#  -v static_files_vol:/var/www/static:ro \
-#  -v $(pwd)/media:/var/www/media:ro \
-#  --restart unless-stopped \
-#  starburger-nginx:latest включить когла пройдет неделя что бы убрался лимит на 5 сертификатов
+docker run -d \
+  --name nginx \
+  --network starburger_app-net \
+  -p 0.0.0.0:80:80 \
+  -p 0.0.0.0:443:443 \
+  -v $(pwd)/nginx/https.conf:/etc/nginx/conf.d/default.conf:ro \
+  -v certbot_conf_vol:/etc/letsencrypt \
+  -v certbot_www_vol:/var/www/certbot \
+  -v static_files_vol:/var/www/static:ro \
+  -v $(pwd)/media:/var/www/media:ro \
+  --restart unless-stopped \
+  starburger-nginx:latest
 
-docker run -it --rm --network host \
-    -v certbot_conf_vol:/etc/letsencrypt \
-    -v certbot_www_vol:/var/www/certbot \
-    certbot/certbot:latest \
-    certonly --webroot --webroot-path=/var/www/certbot \
-    -d $DOMAIN -d www.$DOMAIN \
-    --email $EMAIL --agree-tos --no-eff-email \
-    --force-renewal --staging
 
 echo "HTTPS ВКЛЮЧЁН: https://$DOMAIN"
