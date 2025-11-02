@@ -138,7 +138,7 @@ INTERNAL_IPS = [
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 STATICFILES_DIRS = [
-    BASE_DIR / "bundles",
+    os.path.join(BASE_DIR, 'bundles_out'),
 ]
 
 REST_FRAMEWORK = {
