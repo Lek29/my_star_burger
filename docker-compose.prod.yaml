@@ -69,8 +69,8 @@ services:
       trap exit TERM;
       while :; do
         certbot renew --quiet;
-        echo 'Проверка обновления сертификата: $(date)';
-        sleep 12h & wait $${!};
+        docker restart nginx 2>/dev/null || true;
+        sleep 12h;
       done;
       "
     restart: unless-stopped

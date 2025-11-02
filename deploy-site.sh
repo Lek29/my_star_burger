@@ -24,12 +24,15 @@ until docker compose -f docker-compose.prod.yaml exec -T backend python manage.p
 docker compose -f docker-compose.prod.yaml exec -T backend python manage.py migrate --noinput
 docker compose -f docker-compose.prod.yaml exec -T backend python manage.py collectstatic --noinput --clear
 
-echo "7. Запуск nginx (БЕЗ HTTPS)"
+echo "7. Запуск nginx на HTTP"
+docker stop nginx || true
+docker rm nginx || true
+
 docker run -d \
   --name nginx \
   --network starburger_app-net \
   -p 0.0.0.0:80:80 \
-  -v $(pwd)/nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro \
+  -v $(pwd)/nginx/http.conf:/etc/nginx/conf.d/default.conf:ro \
   -v certbot_conf_vol:/etc/letsencrypt \
   -v certbot_www_vol:/var/www/certbot \
   -v static_files_vol:/var/www/static:ro \

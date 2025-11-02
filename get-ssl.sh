@@ -4,12 +4,8 @@ set -e
 DOMAIN="lek29.ru"
 EMAIL="admin@lek29.ru"
 
-echo "Получение SSL сертификата..."
+echo "Получение SSL..."
 
-# Убедимся, что nginx запущен
-docker compose -f docker-compose.prod.yaml up -d nginx 2>/dev/null || true
-
-# Получаем сертификат
 docker compose -f docker-compose.prod.yaml run --rm \
     -e DOMAINS="$DOMAIN,www.$DOMAIN" \
     -e EMAIL="$EMAIL" \
@@ -20,8 +16,21 @@ docker compose -f docker-compose.prod.yaml run --rm \
 
 echo "Сертификат получен!"
 
-# Перезапускаем nginx — он сам включит HTTPS
-docker restart nginx
+# ПЕРЕКЛЮЧАЕМ nginx на HTTPS
+docker stop nginx || true
+docker rm nginx || true
+
+docker run -d \
+  --name nginx \
+  --network starburger_app-net \
+  -p 0.0.0.0:80:80 \
+  -p 0.0.0.0:443:443 \
+  -v $(pwd)/nginx/https.conf:/etc/nginx/conf.d/default.conf:ro \
+  -v certbot_conf_vol:/etc/letsencrypt \
+  -v certbot_www_vol:/var/www/certbot \
+  -v static_files_vol:/var/www/static:ro \
+  -v $(pwd)/media:/var/www/media:ro \
+  --restart unless-stopped \
+  starburger-nginx:latest
 
 echo "HTTPS ВКЛЮЧЁН: https://$DOMAIN"
-echo "Автообновление: docker compose up -d certbot"
