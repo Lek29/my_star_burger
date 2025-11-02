@@ -26,6 +26,6 @@ COPY frontend/package-lock.json ./
 RUN npm install
 
 # Сборка фронтенда при сборке образа
-RUN npx parcel build bundles-src/index.js --dist-dir bundles --public-url /static/
+RUN npx parcel build bundles-src/index.js --dist-dir /app/bundles_out --public-url /static/
 
 CMD ["gunicorn", "star_burger.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
