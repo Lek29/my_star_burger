@@ -14,7 +14,7 @@ docker compose -f docker-compose.prod.yaml build
 
 echo "4. Фронтенд"
 docker compose -f docker-compose.prod.yaml run --rm backend \
-    npx parcel build bundles-src/index.js --dist-dir /app/bundles --public-url /static/
+    npx parcel build frontend/bundles-src/index.js --dist-dir bundles --public-url /static/
 
 echo "5. Запуск БД и backend"
 docker compose -f docker-compose.prod.yaml up -d db backend
