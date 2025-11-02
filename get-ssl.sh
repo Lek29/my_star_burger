@@ -6,13 +6,14 @@ EMAIL="admin@lek29.ru"
 
 echo "Получение SSL..."
 
-docker compose -f docker-compose.prod.yaml run --rm \
+docker run -it --rm --network host \
     -e DOMAINS="$DOMAIN,www.$DOMAIN" \
     -e EMAIL="$EMAIL" \
     certbot \
     certonly --webroot --webroot-path=/var/www/certbot \
     -d $DOMAIN -d www.$DOMAIN \
-    --email $EMAIL --agree-tos --no-eff-email
+    --email $EMAIL --agree-tos --no-eff-email\
+    --force-renewal
 
 echo "Сертификат получен!"
 

@@ -61,6 +61,7 @@ services:
   certbot:
     image: certbot/certbot:latest
     container_name: certbot
+    network_mode: host
     volumes:
       - certbot_conf_vol:/etc/letsencrypt
       - certbot_www_vol:/var/www/certbot
@@ -74,4 +75,4 @@ services:
       done;
       "
     restart: unless-stopped
-    networks: [app-net]
+
