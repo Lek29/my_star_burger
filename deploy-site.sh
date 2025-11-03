@@ -19,7 +19,7 @@ docker compose -f docker-compose.prod.yaml up -d db backend
 
 echo "6. Миграции + collectstatic"
 docker compose -f docker-compose.prod.yaml run --rm backend \
-    python manage.py collectstatic --noinput
+    python manage.py collectstatic --noinput --clear
 
 echo "7. Запуск nginx на HTTP"
 docker stop nginx || true
