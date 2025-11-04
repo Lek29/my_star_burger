@@ -21,6 +21,7 @@ COPY backend/ .
 COPY frontend/bundles-src/ ./bundles-src/
 COPY frontend/package.json ./
 COPY frontend/package-lock.json ./
+COPY assets/ ./assets/
 
 # Установка node deps (включая parcel)
 RUN npm install
