@@ -10,6 +10,7 @@ volumes:
     driver: local
   certbot_conf_vol:
   certbot_www_vol:
+  media_vol:
 
 services:
   db:
