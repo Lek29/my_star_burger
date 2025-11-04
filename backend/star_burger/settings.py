@@ -12,7 +12,7 @@ env.read_env()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-STATIC_ROOT = '/var/www/staticfiles'
+STATIC_ROOT = '/var/www/static'
 
 DEFAULT_CHARSET = 'utf-8'
 
