@@ -21,21 +21,8 @@ echo "6. Миграции + collectstatic"
 docker compose -f docker-compose.prod.yaml run --rm backend \
     python manage.py collectstatic --noinput --clear
 
-echo "7. Запуск nginx на HTTP"
-docker stop nginx || true
-docker rm nginx || true
-
-docker run -d \
-  --name nginx \
-  --network starburger_app-net \
-  -p 0.0.0.0:80:80 \
-  -v $(pwd)/nginx/http.conf:/etc/nginx/conf.d/default.conf:ro \
-  -v certbot_conf_vol:/etc/letsencrypt \
-  -v certbot_www_vol:/var/www/certbot \
-  -v static_files_vol:/var/www/static:ro \
-  -v $(pwd)/media:/var/www/media:ro \
-  --restart unless-stopped \
-  starburger-nginx:latest
+echo "7. Запуск nginx на HTTP (через compose)"
+docker compose -f docker-compose.prod.yaml up -d nginx
 
 echo "САЙТ ПОДНЯТ: http://lek29.ru"
 echo "Запустите: ./get-ssl.sh — для HTTPS"

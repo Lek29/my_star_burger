@@ -42,7 +42,7 @@ services:
       - PYTHONPATH=/app
     volumes:
       - static_files_vol:/var/www/staticfiles
-      - ./media:/app/media
+      - media_vol:/app/media
       - frontend_dist_vol:/app/bundles
     env_file:
       - .env
@@ -76,3 +76,20 @@ services:
       "
     restart: unless-stopped
 
+  nginx:
+    image: starburger-nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/http.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_conf_vol:/etc/letsencrypt:ro
+      - certbot_www_vol:/var/www/certbot
+      - static_files_vol:/var/www/static:ro
+      - media_vol:/var/www/media:ro
+    depends_on:
+      - backend
+    networks:
+      - app-net
