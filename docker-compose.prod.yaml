@@ -42,7 +42,7 @@ services:
     environment:
       - PYTHONPATH=/app
     volumes:
-      - static_files_vol:/var/www/staticfiles
+      - static_files_vol:/var/www/static
       - media_vol:/app/media
       - frontend_dist_vol:/app/bundles
     env_file:
