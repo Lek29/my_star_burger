@@ -11,7 +11,7 @@ env = Env()
 env.read_env()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-#STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 STATIC_ROOT = '/var/www/staticfiles'
 
 DEFAULT_CHARSET = 'utf-8'
@@ -132,7 +132,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'bundles_out'),
-    BASE_DIR / "assets" / "static",
+    os.path.join(BASE_DIR, "assets", "static"),
 ]
 
 REST_FRAMEWORK = {
