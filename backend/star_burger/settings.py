@@ -91,19 +91,11 @@ WSGI_APPLICATION = 'star_burger.wsgi.application'
 MEDIA_ROOT = os.path.join(os.path.dirname(BASE_DIR), 'media')
 MEDIA_URL = '/media/'
 
-
 DATABASES = {
     'default': dj_database_url.config(
         default=env('DB_URL')
     )
 }
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-#     }
-# }
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -140,6 +132,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'bundles_out'),
+    BASE_DIR / "assets" / "static",
 ]
 
 REST_FRAMEWORK = {
