@@ -29,7 +29,7 @@ docker run -d \
   -v $(pwd)/nginx/https.conf:/etc/nginx/conf.d/default.conf:ro \
   -v certbot_conf_vol:/etc/letsencrypt \
   -v certbot_www_vol:/var/www/certbot \
-  -v static_files_vol:/var/www/static:ro \
+  -v starburger_static_files_vol:/var/www/static:ro \
   -v $(pwd)/media:/var/www/media:ro \
   --restart unless-stopped \
   starburger-nginx:latest
