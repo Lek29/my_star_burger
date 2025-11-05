@@ -18,7 +18,7 @@ echo "5. Запуск БД и backend"
 docker compose -f docker-compose.prod.yaml up -d db backend
 
 echo "6. Миграции + collectstatic"
-docker compose -f docker-compose.prod.yaml run --rm backend \
+docker compose -f docker-compose.prod.yaml exec backend \
     python manage.py collectstatic --noinput --clear
 
 echo "7. Запуск nginx на HTTP (через compose)"
