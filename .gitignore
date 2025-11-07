@@ -149,3 +149,4 @@ staticfiles/
 __pycache__/
 .idea/
 .env
+tempered-ssl-script.sh
