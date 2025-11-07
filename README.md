@@ -330,52 +330,44 @@ ssh username@your_server_ip
 После этого скрипт автоматически обновит код, установит зависимости, применит миграции и перезапустит сервисы. Вам не нужно будет делать ничего больше.
 
 ----
-## Деплой с Docker Compose
+# Деплой проекта StarBurger (prod)
 
-Для унификации окружения и упрощения развертывания используется Docker.
-Вам потребуется установленный Docker и Docker Compose.
+## 1. Подготовка сервера
+```bash
+# Установка Docker и Docker Compose
+sudo apt update
+sudo apt install docker.io docker-compose -y
+sudo systemctl enable docker
+```
+## Клонирование репозитория
+```
+git clone https://github.com/Lek29/starburger.git /opt/starburger
+cd /opt/starburger
+```
+## Настройка переменных окружения
+```bash
 
-### Локальный Деплой (Dev).
-Этот метод идеально подходит для локальной разработки, используя контейнеры вместо локального окружения Python/Node.js.
-
-**Предварительная подготовка**
-
- - Создайте файл .env в корне проекта (рядом с docker-compose.yml) с вашими настройками БД и секретным ключом:
-  ```
+cp .env.example .env
+nano .env
+ #Заполни
    SECRET_KEY=your-secret-key
    DEBUG=True
-   # Настройки PostgreSQL (см. docker-compose.yml)
    POSTGRES_DB=starburger_db
    POSTGRES_USER=starburger_user
    POSTGRES_PASSWORD=starburger_password
    YANDEX_GEOCODER_API_KEY='ваш_ключ'
   ```
-**Запуск проекта**
- 1. Сборка и запуск контейнеров:
-    ```Bash
-        docker compose up --build
-    ```
-    - Эта команда соберет Docker-образы, создаст контейнеры (db, web), запустит Django-сервер и смонтирует код локально.
- 2. Миграции:
-     После первого запуска выполните миграции:
-    ``` Bash
-        docker compose exec web python manage.py migrate
-    ```
-    Доступ: Сайт будет доступен по адресу http://127.0.0.1:8000/. Фронтенд будет пересобираться при изменениях в коде.
-### Деплой на сервер.
-1. Скоприруй с гитхаб:
-  ```
-  git clone YOUR_URL
-  ```
-2. Создай .env:
- ```
-nano .env
- ```
-3. Запусти деплой скрипт:
-```commandline
-bash deploy.sh
+## Деплой
+
+```bash
+# Первый запуск (сборка + миграции + статика)
+./deploy-site.sh
 ```
----
+
+```
+# Получение SSL (Let's Encrypt)
+./get-ssl.sh
+```
 ## Рабочий сайт
 [Starburger](https://lek29.ru)
 
