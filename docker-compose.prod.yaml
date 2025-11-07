@@ -78,7 +78,7 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: starburger-nginx:latest
+    image: nginx:alpine
     container_name: nginx
     restart: unless-stopped
     ports:

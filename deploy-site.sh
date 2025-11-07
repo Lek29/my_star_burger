@@ -12,16 +12,14 @@ git pull
 echo "3. Сборка"
 docker compose -f docker-compose.prod.yaml build
 
-
-
-echo "5. Запуск БД и backend"
+echo "4. Запуск БД и backend"
 docker compose -f docker-compose.prod.yaml up -d db backend
 
-echo "6. Миграции + collectstatic"
+echo "5. Миграции + collectstatic"
 docker compose -f docker-compose.prod.yaml exec backend \
     python manage.py collectstatic --noinput --clear
 
-echo "7. Запуск nginx на HTTP (через compose)"
+echo "6. Запуск nginx на HTTP (через compose)"
 docker compose -f docker-compose.prod.yaml up -d nginx
 
 echo "САЙТ ПОДНЯТ: http://lek29.ru"
